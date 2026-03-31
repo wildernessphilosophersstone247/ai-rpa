@@ -1,6 +1,6 @@
 # Feedback
 
-We welcome feedback on the public `aivanelabs/ai-rpa` Android REPL drafts.
+We welcome feedback on the public `aivanelabs/ai-rpa` Android REPL materials.
 
 ## How to share feedback
 

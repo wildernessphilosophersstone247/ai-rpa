@@ -1,6 +1,6 @@
-# Public Protocol Draft v1
+# Public Protocol v1
 
-This is a draft of the public-facing protocol surface for the first AIVane Android REPL beta.
+This document outlines the public-facing protocol surface for the first AIVane Android REPL beta.
 
 ## Core Endpoints
 
@@ -22,7 +22,7 @@ This is a draft of the public-facing protocol surface for the first AIVane Andro
   - Allows multi-step template execution
   - Kept for powerful workflows, but not the main public story
 
-## Draft Product Story
+## Product Story
 
 Public story:
 
@@ -34,11 +34,10 @@ Compatibility story:
 
 - Advanced users can still execute prepared multi-step templates
 
-## Security Draft
+## Security
 
 - LAN usage only
 - Optional shared token
 - Visible service state and stop controls
 
-This draft will be refined before the public repo is opened.
-
+This protocol will continue to be refined as the public beta evolves.

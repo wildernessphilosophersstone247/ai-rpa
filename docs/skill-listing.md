@@ -1,4 +1,4 @@
-# Skill Listing Draft
+# Skill Listing
 
 ## Title
 
@@ -35,4 +35,3 @@ Use AIVane to connect to an Android device, list launcher apps, inspect the curr
 ## Call To Action
 
 Install the Android app, connect from your desktop over LAN, run the smoke flow, and report what breaks or feels awkward.
-

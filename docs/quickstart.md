@@ -1,4 +1,4 @@
-# Quickstart Draft — AIVane Android REPL
+# Quickstart — AIVane Android REPL
 
 This quickstart introduces the publicly staged CLI for AIVane (AI Mobile Automation) under `aivanelabs/ai-rpa` on `aivane.net`.
 
@@ -56,7 +56,7 @@ python clients/python/aria_tree.py --input <refId> "hello" --url http://<device-
 python clients/python/aria_tree.py --back --url http://<device-ip>:8080
 ```
 
-## Draft Notes
+## Notes
 
 - `/api/execute` remains available for advanced multi-step templates.
 - The public protocol may be narrowed and cleaned up before release.

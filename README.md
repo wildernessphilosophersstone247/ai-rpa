@@ -1,6 +1,6 @@
 See the Chinese overview at [README_CN.md](README_CN.md).
 
-# AIVane AI RPA Draft
+# AIVane AI RPA
 
 This repository represents the public-facing `aivane.net` launch for the `aivanelabs/ai-rpa` project. Under the AIVane umbrella ("AI Mobile Automation"), we start with a transparent Android REPL beta that lets AI agents explore UI trees and drive Android devices through a lightweight Python CLI.
 
@@ -16,7 +16,7 @@ This repository represents the public-facing `aivane.net` launch for the `aivane
 ## Public Assets
 
 - `clients/python/aria_tree.py`: REPL-first client that talks to `/api/execute`, `/health`, `/screenshot`, `/api/apps`.
-- `docs/`: quickstart, protocol draft, permissions, known limitations, feedback, release notes, and repo scope.
+- `docs/`: quickstart, protocol, permissions, known limitations, feedback, release notes, and repo scope.
 - `examples/`: smoke flows and minimal usage examples.
 - `skills/android-repl/`: sample skill definition with prompts and agent metadata.
 

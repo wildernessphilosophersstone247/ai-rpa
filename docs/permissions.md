@@ -1,6 +1,6 @@
 # Permissions Overview
 
-This draft summarizes the permissions the Android REPL beta requests and why they matter for the first public release.
+This document summarizes the permissions the Android REPL beta requests and why they matter for the first public release.
 
 ## Accessibility
 

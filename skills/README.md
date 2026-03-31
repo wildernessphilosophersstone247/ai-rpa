@@ -1,8 +1,8 @@
-# Skills Draft
+# Skills
 
-This directory holds draft public skills for the `aivanelabs/ai-rpa` project on `aivane.net`.
+This directory holds public skills for the `aivanelabs/ai-rpa` project on `aivane.net`.
 
-## Current Drafts
+## Current Skills
 
 - `android-repl/`
   - Public Android phone control REPL skill

@@ -1,4 +1,4 @@
-# GitHub Metadata Draft
+# GitHub Metadata
 
 Planned repository:
 

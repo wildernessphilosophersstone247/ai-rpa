@@ -4,8 +4,8 @@
 
 - [x] README polished for first public visit
 - [x] Quickstart matches current public client behavior
-- [x] Protocol draft matches current supported endpoints
-- [x] Skill draft validated
+- [x] Protocol document matches current supported endpoints
+- [x] Skill validated
 - [x] REPL operation matrix up to date
 - [x] LICENSE present
 - [x] CONTRIBUTING.md present

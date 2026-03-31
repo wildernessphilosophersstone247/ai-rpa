@@ -1,11 +1,11 @@
-# Repository Scope Draft
+# Repository Scope
 
 This staging repo captures the upcoming `aivanelabs/ai-rpa` public surface for AIVane AI Mobile Automation.
 
 ## Intended Public Content
 
 - Python CLI / REPL client
-- Protocol draft and user-facing documentation
+- Protocol and user-facing documentation
 - Smoke examples
 - Sample skills for agent ecosystems
 
@@ -17,7 +17,7 @@ This staging repo captures the upcoming `aivanelabs/ai-rpa` public surface for A
 - Private update channels
 - Secrets, credentials, release infrastructure
 
-## Contribution Model Draft
+## Contribution Model
 
 - External contributors:
   - docs
@@ -29,6 +29,6 @@ This staging repo captures the upcoming `aivanelabs/ai-rpa` public surface for A
   - private engine
   - release packaging
 
-## Naming Draft
+## Naming
 
 This local directory is using a temporary name and can be renamed later without changing the public boundary strategy.

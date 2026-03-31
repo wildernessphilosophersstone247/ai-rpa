@@ -131,5 +131,5 @@ Stop and ask for user help when:
 ## References
 
 - For the smoke checklist: [references/smoke-flow.md](references/smoke-flow.md)
-- For public protocol expectations: [../../docs/protocol-v1-draft.md](../../docs/protocol-v1-draft.md)
+- For public protocol expectations: [../../docs/protocol-v1.md](../../docs/protocol-v1.md)
 - For first-run instructions: [../../docs/quickstart.md](../../docs/quickstart.md)

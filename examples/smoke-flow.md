@@ -1,4 +1,4 @@
-# Smoke Flow Draft
+# Smoke Flow
 
 Use this flow to verify a fresh Android REPL beta installation.
 
@@ -25,4 +25,3 @@ python clients/python/aria_tree.py --list --url http://<device-ip>:8080
 6. Tap or input.
 7. Use back.
 8. If needed, stop the current task.
-

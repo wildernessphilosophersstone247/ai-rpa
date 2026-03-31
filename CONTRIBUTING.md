@@ -1,4 +1,4 @@
-# Contributing to AIVane AI RPA Draft
+# Contributing to AIVane AI RPA
 
 Thank you for helping shape the public `aivanelabs/ai-rpa` experience!
 
@@ -7,7 +7,7 @@ Thank you for helping shape the public `aivanelabs/ai-rpa` experience!
 - Improvements to the Python `clients/python/aria_tree.py` REPL surface
 - Enhancements and clarifications to the `docs/` quickstart, protocol, and smoke guidance
 - Example sequences located under `examples/`
-- Skills drafts under `skills/`, particularly `android-repl`
+- Skills under `skills/`, particularly `android-repl`
 
 ## How to contribute
 
@@ -20,4 +20,4 @@ Thank you for helping shape the public `aivanelabs/ai-rpa` experience!
 
 - Keep private runtime logic out of these public assets.
 - Cite real device or protocol observations when describing smoke flows.
-- Keep changes focused; this draft stays lean ahead of the full repo release.
+- Keep changes focused; this repository stays lean while the first public release is prepared.
