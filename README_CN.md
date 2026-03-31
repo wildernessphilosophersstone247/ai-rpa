@@ -1,4 +1,4 @@
-# AIVane AI RPA 草案
+# AIVane AI RPA
 
 这是 `aivane.net` 上公开的 `aivanelabs/ai-rpa` 项目仓，对外展示 AIVane（AI Mobile Automation）Android REPL beta 线。
 
@@ -14,7 +14,7 @@
 ## 公开资料
 
 - `clients/python/aria_tree.py`：REPL 客户端，调用 `/api/execute`、`/health`、`/screenshot`、`/api/apps`。
-- `docs/`：包含 quickstart、协议草案、权限说明、known limitations、反馈、release notes、repo scope。
+- `docs/`：包含 quickstart、协议说明、权限说明、known limitations、反馈、release notes、repo scope。
 - `examples/`：提供 smoke 流、操作矩阵和启动脚本示例。
 - `skills/android-repl/`：公开技能定义、提示词和 agents 元数据。
 
