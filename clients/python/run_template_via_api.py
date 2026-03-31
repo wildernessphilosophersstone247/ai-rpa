@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 
-CONFIG_FILE_PATH = Path(os.path.expanduser("~/.aria_tree_config.json"))
+CONFIG_FILE_PATH = Path(os.path.expanduser("~/.agent-android.json"))
 CONFIG_URL_KEY = "url"
 
 
@@ -103,3 +103,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+

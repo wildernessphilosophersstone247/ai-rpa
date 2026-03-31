@@ -7,21 +7,20 @@
 1. 确保 Android 设备安装了 AIVane REPL beta APK，且与电脑在同一 Wi-Fi 网络。
 2. 运行客户端：  
    ```bash
-   python clients/python/aivane_repl.py --repl --url http://<device-ip>:8080
+   python clients/python/agent-android.py --repl --url http://<device-ip>:8080
    ```
 3. 在 REPL 中保存地址（`set url http://<device-ip>:8080`），接着执行 smoke 流：`health`、`apps`、`la <package>`、`list`、`tap <refId>`、`input <refId>`、`back`、`press home`、`screenshot`（如已授权）。
 
 ## 公开资料
 
-- `clients/python/aivane_repl.py`：对外主推的 Android REPL 客户端入口。
-- `clients/python/aria_tree.py`：兼容入口，当前仍承载同一套 REPL 功能。
+- `clients/python/agent-android.py`：Android REPL 的对外客户端入口。
 - `docs/`：包含 quickstart、协议说明、权限说明、known limitations、反馈、release notes、repo scope。
 - `examples/`：提供 smoke 流、操作矩阵和启动脚本示例。
-- `skills/android-repl/`：公开技能定义、提示词和 agents 元数据。
+- `skills/agent-android/`：公开技能定义、提示词和 agents 元数据。
 
 ## 安装与启动
 
-- `docs/install-android-repl.md`：指导 APK 安装、同局域网、首次 smoke。
+- `docs/install-agent-android.md`：指导 APK 安装、同局域网、首次 smoke。
 - `examples/start-app-repl.sh`：公开版启动脚本示例，用于在设备上打开 `aivane.apprepl`。
 
 ## 附加资源
@@ -36,3 +35,5 @@
 ## 联系方式
 
 如需讨论/协作，请发邮件至 `aivanelabs@gmail.com`。
+
+

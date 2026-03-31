@@ -25,6 +25,8 @@ What actually happened?
 
 ### Environment
 
-- `aivane_repl.py --version` (if available):
+- `agent-android.py --version` (if available):
 - Device IP / model:
 - ADB/CLI environment (OS, Python 3.x):
+
+

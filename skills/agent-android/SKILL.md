@@ -1,5 +1,5 @@
 ---
-name: android-repl
+name: agent-android
 description: Connect to AIVane (AI Mobile Automation) over LAN, inspect launcher apps and UI state, and control the phone step by step through the public REPL/CLI path. Use this when Codex needs Android phone control for AI-agent tasks such as checking device connectivity, listing launchable apps, launching an app, inspecting the current UI tree, tapping, inputting text, swiping, navigating back/home, taking screenshots, or running a small end-to-end smoke flow with the public Python client.
 ---
 
@@ -7,20 +7,20 @@ description: Connect to AIVane (AI Mobile Automation) over LAN, inspect launcher
 
 ## Overview
 
-Use this skill to drive an Android device through the public AIVane Android REPL beta surface hosted on `aivane.net` under the `aivanelabs/ai-rpa` repo.
+Use this skill to drive an Android device through the public agent-android beta surface hosted on `aivane.net` under the `aivanelabs/ai-rpa` repo.
 
 This skill assumes:
 
 - the phone and the controlling machine are on the same LAN
 - the Android REPL app is installed and its local API service is running
-- the public Python client at `../../clients/python/aivane_repl.py` is available
+- the public Python client at `../../clients/python/agent-android.py` is available
 
 ## Quick Start
 
 Use the public client directly:
 
 ```bash
-python ../../clients/python/aivane_repl.py --repl --url http://<device-ip>:8080
+python ../../clients/python/agent-android.py --repl --url http://<device-ip>:8080
 ```
 
 If the user already saved the device URL before, the client can be used without `--url`.
@@ -48,7 +48,7 @@ If health fails, stop and fix connectivity before trying UI actions.
 List launcher apps:
 
 ```bash
-python ../../clients/python/aivane_repl.py --apps --url http://<device-ip>:8080
+python ../../clients/python/agent-android.py --apps --url http://<device-ip>:8080
 ```
 
 Inside the REPL, use:
@@ -64,13 +64,13 @@ Use launcher discovery when the user does not know the package name.
 Launch an app:
 
 ```bash
-python ../../clients/python/aivane_repl.py --launch <package> --url http://<device-ip>:8080
+python ../../clients/python/agent-android.py --launch <package> --url http://<device-ip>:8080
 ```
 
 Then inspect the current UI:
 
 ```bash
-python ../../clients/python/aivane_repl.py --list --url http://<device-ip>:8080
+python ../../clients/python/agent-android.py --list --url http://<device-ip>:8080
 ```
 
 ### 4. Interact step by step
@@ -133,3 +133,5 @@ Stop and ask for user help when:
 - For the smoke checklist: [references/smoke-flow.md](references/smoke-flow.md)
 - For public protocol expectations: [../../docs/protocol-v1.md](../../docs/protocol-v1.md)
 - For first-run instructions: [../../docs/quickstart.md](../../docs/quickstart.md)
+
+

@@ -1,37 +1,38 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-AIVane ARIA Tree CLI Tool v5.4 (following-sibling:: XPath axis)
-跨平台运行: Linux / macOS / Windows
+AIVane Android REPL CLI helper for agent-android.
 
-使用方式:
-    python aria_tree.py --repl            # 进入 REPL 交互模式（推荐）
-    python aria_tree.py --list            # 单次命令模式（兼容旧用法）
+Cross-platform command line client for Linux, macOS, and Windows.
 
-REPL 命令速查:
-    l [n]         列出元素（n=前n个，reuse缓存）
-    ss            刷新树并列出（force refresh）
-    t <N>         点击 refId=N
-    tx <xpath>    用 XPath 点击（运行时 locator 模式）
-    i <N> <text> 向 refId=N 输入文本
-    ix <xpath> <text> 用 XPath 输入
-    vx <xpath>    运行时验证 XPath 匹配数量
-    sw <d>        滑动方向（d/u/l/r，支持 --dur --dist 参数）
-    wf <text>     等待元素出现（--t N 指定超时）
-    g <N> <attr>  获取元素属性
-    s [path]       截图
-    la <pkg>       启动 App
-    b              返回
-    p <key>        按键 (back/home)
-    ref <N>        元素详情
-    x <N>          XPath
-    f <text>       按文本过滤
-    id <resourceId> 按 resourceId 过滤
-    h              帮助
-    q              退出
-    vars           会话变量
-    set url <u>     切换服务器 URL
-    set timeout <N> 设置默认超时
+Usage:
+    python agent-android.py --repl            # Enter the interactive REPL (recommended)
+    python agent-android.py --list            # Run a one-off command (compatibility mode)
+
+REPL quick reference:
+    l [n]         List elements (first n entries, reuse cache)
+    ss            Refresh the UI tree snapshot (force refresh)
+    t <N>         Tap element with refId=N
+    tx <xpath>    Tap by XPath locator (runtime evaluation)
+    i <N> <text>  Enter text into refId=N
+    ix <xpath> <text> Enter text via XPath locator
+    vx <xpath>    Validate XPath match count in runtime layout
+    sw <d>        Swipe direction (d/u/l/r, supports --dur/--dist)
+    wf <text>     Wait for element text (use --t to override timeout)
+    g <N> <attr>  Inspect attribute value for refId=N
+    s [path]      Capture screenshot
+    la <pkg>      Launch an app by package name
+    b            Navigate back
+    p <key>       Press a system key (back/home)
+    ref <N>      Dump element details
+    x <N>        Print XPath for refId=N
+    f <text>     Filter tree elements by visible text
+    id <resourceId> Filter elements by resourceId
+    h            Show help
+    q            Quit the REPL
+    vars         Show session variables
+    set url <u>  Switch the server URL
+    set timeout <N> Adjust the default timeout
 """
 
 import json
@@ -68,7 +69,7 @@ if sys.platform == 'win32':
 
 _REPL_EXIT = object()
 
-CONFIG_FILE_PATH = Path(os.path.expanduser("~/.aria_tree_config.json"))
+CONFIG_FILE_PATH = Path(os.path.expanduser("~/.agent-android.json"))
 CONFIG_URL_KEY = "url"
 
 
@@ -118,7 +119,7 @@ def require_base_url(cmdline_url: Optional[str]) -> str:
         return url
     print(
         "AIVane server URL is required. Provide it via `--url` or run "
-        "`python aria_tree.py --repl` and `set url <url>` to persist it under "
+        "`python agent-android.py --repl` and `set url <url>` to persist it under "
         f"{CONFIG_FILE_PATH}.",
         file=sys.stderr,
     )
@@ -169,8 +170,8 @@ def _format_launcher_app(app: Dict[str, Any]) -> str:
     return f"{label} — {package}{extra_text} [{activity}]"
 
 
-class AriaTreeClient:
-    """AIVane ARIA Tree 客户端"""
+class AgentAndroidClient:
+    """Client for the AIVane Android REPL public API."""
 
     def __init__(self, base_url: str):
         trimmed = base_url.strip()
@@ -179,7 +180,7 @@ class AriaTreeClient:
         self.base_url = trimmed.rstrip('/')
         self.execute_url = f"{self.base_url}/api/execute"
         self._opener = _build_http_opener(self.base_url)
-        self._local_tree: Optional[List[Dict]] = None  # 本地缓存（进程内）
+        self._local_tree: Optional[List[Dict]] = None  # In-process UI tree cache
         self._ui_tree_xml_cache: Optional[str] = None
         self._package_name_cache: Optional[str] = None
 
@@ -218,7 +219,7 @@ class AriaTreeClient:
                 url,
                 headers={
                     'Accept': 'application/json',
-                    'User-Agent': 'aria_tree.py/4.5'
+                    'User-Agent': 'agent-android.py/0.1'
                 }
             )
             with self._opener.open(req, timeout=30) as response:
@@ -249,7 +250,7 @@ class AriaTreeClient:
         return [entry for entry in apps if isinstance(entry, dict)]
 
     def _download_binary(self, path: str, params: Dict = None) -> Optional[bytes]:
-        """下载二进制文件"""
+        """Download a binary payload from the Android runtime."""
         url = self.base_url + path
         if params:
             url += '?' + urllib.parse.urlencode(params)
@@ -263,7 +264,7 @@ class AriaTreeClient:
     def _execute_single_operation(self, template_id: str, operation_type: str,
                                   parameters: Optional[Dict[str, Any]] = None
                                   ) -> Optional[Dict]:
-        """执行单步模板操作。"""
+        """Execute a single template operation."""
         return self._api_call({
             "templateId": template_id,
             "operations": [
@@ -275,7 +276,7 @@ class AriaTreeClient:
                           operations: List[Dict[str, Any]],
                           output_names: Optional[List[str]] = None
                           ) -> Optional[Dict]:
-        """执行多步模板，并可声明输出变量。"""
+        """Run a multi-step template and optionally declare output variables."""
         template: Dict[str, Any] = {
             "templateId": template_id,
             "operations": operations,
@@ -288,7 +289,7 @@ class AriaTreeClient:
         return self._api_call(template)
 
     def _get_outputs(self, result: Optional[Dict]) -> Dict[str, Any]:
-        """提取 /api/execute 成功响应里的 outputs。"""
+        """Extract the outputs block from a successful /api/execute response."""
         if not result or not result.get('success'):
             return {}
         outputs = result.get('data', {}).get('outputs', {})
@@ -298,7 +299,7 @@ class AriaTreeClient:
                               parameters: Optional[Dict[str, Any]],
                               success_message: str,
                               failure_prefix: str) -> bool:
-        """执行单步操作并统一处理成功/失败输出。"""
+        """Execute an operation and print a consistent success/failure message."""
         result = self._execute_single_operation(template_id, operation_type, parameters)
         if result and result.get('success'):
             print(success_message)
@@ -312,7 +313,7 @@ class AriaTreeClient:
 
     def _get_coordinates(self, elem: Dict[str, Any], label: str
                          ) -> Optional[Tuple[Any, Any]]:
-        """提取元素坐标，不可点击元素统一报错。"""
+        """Retrieve tap coordinates, failing if none are provided."""
         x, y = elem.get('x'), elem.get('y')
         if x is None or y is None:
             print(f"{label} has no coordinates")
@@ -320,7 +321,7 @@ class AriaTreeClient:
         return x, y
 
     def _parse_match_count(self, value: Any) -> int:
-        """把运行时返回的匹配数量转换成 int。"""
+        """Convert a runtime match-count metadata value into an integer."""
         if isinstance(value, bool):
             return int(value)
         if isinstance(value, (int, float)):
@@ -442,7 +443,7 @@ class AriaTreeClient:
                 {
                     "operationType": "android.ui.dumpTree",
                     "parameters": {
-                        "filePath": "/storage/emulated/0/Android/data/aivane.apptest/files/aria_tree_ui_dump.xml",
+                        "filePath": "/storage/emulated/0/Android/data/aivane.apprepl/files/ui_tree_dump.xml",
                         "format": "xml",
                         "variableName": "uiTreeContent",
                     },
@@ -459,11 +460,13 @@ class AriaTreeClient:
     # ---------------------------------------------------------------------------
     # ---------------------------------------------------------------------------
 
-    def get_aria_tree(self, wait: int = 0, force_refresh: bool = False
-                      ) -> Optional[List[Dict]]:
+    def get_ui_elements(self, wait: int = 0, force_refresh: bool = False
+                        ) -> Optional[List[Dict]]:
         """
-        获取 ARIA 树。
-        内部自动缓存：同一实例内后续调用复用上次结果（除非 force_refresh=True）。
+        Fetch the current UI element list.
+
+        Results are cached within this client instance unless
+        `force_refresh=True`.
         """
         if wait > 0:
             time.sleep(wait)
@@ -471,19 +474,19 @@ class AriaTreeClient:
         if not force_refresh and self._local_tree is not None:
             return self._local_tree
 
-        elements = self._fetch_aria_tree_impl()
+        elements = self._fetch_ui_elements_impl()
         if elements is not None:
             self._local_tree = elements
         return elements
 
-    def _fetch_aria_tree_impl(self) -> Optional[List[Dict]]:
-        """真正从 API 获取 ARIA 树"""
+    def _fetch_ui_elements_impl(self) -> Optional[List[Dict]]:
+        """Fetch the UI element list from the API."""
         json_str = (
-            '{"templateId":"aria-get","templateName":"ARIA Tree Query",'
-            '"parameters":[{"name":"aria","type":"STRING","direction":"OUTPUT"}],'
+            '{"templateId":"ui-elements-get","templateName":"UI Elements Query",'
+            '"parameters":[{"name":"uiElements","type":"STRING","direction":"OUTPUT"}],'
             '"operations":['
             '{"operationType":"android.ui.getAriaTree","parameters":{"variableName":"tree"}},'
-            '{"operationType":"variable.assign","parameters":{"variableName":"aria","value":"\\u0024{tree}"}}'
+            '{"operationType":"variable.assign","parameters":{"variableName":"uiElements","value":"\\u0024{tree}"}}'
             ']}'
         )
         result = self._api_call(json.loads(json_str))
@@ -496,12 +499,12 @@ class AriaTreeClient:
 
         outputs = result.get('data', {}).get('outputs', {})
         if isinstance(outputs, dict):
-            aria_json = outputs.get('aria', '[]')
+            ui_elements_json = outputs.get('uiElements', '[]')
         else:
-            aria_json = '[]'
+            ui_elements_json = '[]'
 
         try:
-            elements = json.loads(aria_json)
+            elements = json.loads(ui_elements_json)
             return elements
         except json.JSONDecodeError as e:
             print(f"JSON parse error: {e}", file=sys.stderr)
@@ -519,7 +522,7 @@ class AriaTreeClient:
         """
         deadline = time.time() + timeout
         while time.time() < deadline:
-            elements = self.get_aria_tree(force_refresh=True)
+            elements = self.get_ui_elements(force_refresh=True)
             if elements:
                 if refId is not None:
                     for e in elements:
@@ -724,7 +727,7 @@ class AriaTreeClient:
                 {
                     "operationType": "android.ui.dumpTree",
                     "parameters": {
-                        "filePath": "/storage/emulated/0/Android/data/aivane.apptest/files/aria_tree_ui_dump.json",
+                        "filePath": "/storage/emulated/0/Android/data/aivane.apprepl/files/ui_tree_dump.json",
                         "format": "json",
                         "variableName": "uiTreeJson",
                     },
@@ -863,7 +866,7 @@ class AriaTreeClient:
     def _find_element_by_refId(self, refId: int,
                                 force_refresh: bool = False) -> Optional[Dict]:
         """从缓存树中查找元素（找不到才重新获取）"""
-        tree = self.get_aria_tree(force_refresh=force_refresh)
+        tree = self.get_ui_elements(force_refresh=force_refresh)
         if not tree:
             return None
         for elem in tree:
@@ -1973,7 +1976,7 @@ def print_tree(elements: List[Dict], filter_text: str = None,
 
 class AriaReplSession:
     """
-    AriaTree REPL 会话。
+    agent-android REPL 会话。
 
     命令语法：动词 [+ 副词/参数]
     示例：
@@ -2177,7 +2180,7 @@ class AriaReplSession:
     def _ensure_tree(self, force=False) -> Optional[List[Dict]]:
         """确保有缓存的树（必要时刷新）"""
         if force or self._tree is None:
-            self._tree = self.client.get_aria_tree(force_refresh=True)
+            self._tree = self.client.get_ui_elements(force_refresh=True)
         return self._tree
 
     def _invalidate_tree(self):
@@ -2766,7 +2769,7 @@ class AriaReplSession:
     def _print_help(self):
         lines = [
             "",
-            "  AriaTree REPL v5.4 — Command Reference",
+            "  agent-android REPL v5.4 — Command Reference",
             "  ─" + "─" * 66,
             "",
             "  Browse",
@@ -2823,7 +2826,7 @@ class AriaReplSession:
 
     def _print_banner(self):
         print()
-        print("  AriaTree REPL v5.4  —  Android UI Automation REPL")
+        print("  agent-android REPL v5.4  —  Android UI Automation REPL")
         print(f"  Server: {self.client.base_url}")
         print("  Type 'h' for help, 'q' to quit.")
         print()
@@ -2832,7 +2835,7 @@ class AriaReplSession:
         print(f"  [!] {msg}", file=sys.stderr)
 def main():
     parser = argparse.ArgumentParser(
-        description='AriaTree v5.4 — Android UI Automation + following-sibling:: axis',
+        description='agent-android v0.1 — Android UI Automation + following-sibling:: axis',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__
     )
@@ -2889,7 +2892,7 @@ def main():
     url = require_base_url(args.url)
 
     if args.repl:
-        hist = os.path.expanduser('~/.aria_tree_history')
+        hist = os.path.expanduser('~/.agent-android-history')
         session = AriaReplSession(url=url, history_file=hist)
         session.run()
         sys.exit(0)
@@ -2964,7 +2967,7 @@ def main():
     # ------------------------------------------------------------------
     # ------------------------------------------------------------------
     print("Fetching ARIA tree...", file=sys.stderr)
-    elements = client.get_aria_tree(wait=args.wait, force_refresh=force_refresh)
+    elements = client.get_ui_elements(wait=args.wait, force_refresh=force_refresh)
     if not elements:
         print("Failed to get ARIA tree", file=sys.stderr)
         sys.exit(1)
@@ -3045,3 +3048,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+

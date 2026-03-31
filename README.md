@@ -9,21 +9,20 @@ This repository represents the public-facing `aivane.net` launch for the `aivane
 1. Ensure your Android device has the AIVane REPL beta APK installed and is reachable over Wi‑Fi.
 2. Run the CLI:  
    ```bash
-   python clients/python/aivane_repl.py --repl --url http://<device-ip>:8080
+   python clients/python/agent-android.py --repl --url http://<device-ip>:8080
    ```
 3. Inside the REPL, save the URL (`set url http://<device-ip>:8080`) and run the smoke path: `health`, `apps`, `la <package>`, `list`, `tap <refId>`, `input <refId>`, `back`, `press home`, `screenshot`.
 
 ## Public Assets
 
-- `clients/python/aivane_repl.py`: preferred public-facing REPL entrypoint for Android device control.
-- `clients/python/aria_tree.py`: compatibility client that currently powers the same flow while older references are updated.
+- `clients/python/agent-android.py`: public-facing REPL entrypoint for Android device control.
 - `docs/`: quickstart, protocol, permissions, known limitations, feedback, release notes, and repo scope.
 - `examples/`: smoke flows and minimal usage examples.
-- `skills/android-repl/`: sample skill definition with prompts and agent metadata.
+- `skills/agent-android/`: sample skill definition with prompts and agent metadata.
 
 ## Installation & Launch
 
-- `docs/install-android-repl.md`: steps to install the APK, ensure LAN connectivity, and run the first smoke.
+- `docs/install-agent-android.md`: steps to install the APK, ensure LAN connectivity, and run the first smoke.
 - `examples/start-app-repl.sh`: a public-friendly starter script to connect to a device, optionally install the APK, and launch the Android REPL service.
 
 ## Additional Resources
@@ -38,3 +37,5 @@ See `docs/known-limitations.md` for the current Beta boundaries (permission prom
 ## Contact
 
 For questions and light coordination, please email `aivanelabs@gmail.com`.
+
+

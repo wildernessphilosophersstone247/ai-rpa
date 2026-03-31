@@ -1,6 +1,6 @@
 # Installing the Android REPL Beta
 
-This guide covers the public prerequisites for running the AIVane Android REPL beta (AI Mobile Automation).
+This guide covers the public prerequisites for running the agent-android beta (AI Mobile Automation).
 
 ## 1. Install the APK
 
@@ -33,8 +33,10 @@ The helper enables accessibility, starts the app, and tries to bring up the API 
 ## 4. Run the first smoke
 
 1. Open the REPL client:  
-   `python clients/python/aivane_repl.py --repl --url http://<device-ip>:8080`
+   `python clients/python/agent-android.py --repl --url http://<device-ip>:8080`
 2. Inside the REPL save the URL (`set url ...`) and run: `health`, `apps`, `la <package>`, `list`, `tap <refId>`, `input <refId>`, `back`, `press home`.
 3. If you granted screenshot permission, run `screenshot` to confirm capture.
 
 This smoke ensures the base APIs and CLI actions function before automating larger flows.
+
+

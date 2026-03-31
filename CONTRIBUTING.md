@@ -4,10 +4,10 @@ Thank you for helping shape the public `aivanelabs/ai-rpa` experience!
 
 ## What to contribute
 
-- Improvements to the Python `clients/python/aivane_repl.py` REPL surface
+- Improvements to the Python `clients/python/agent-android.py` REPL surface
 - Enhancements and clarifications to the `docs/` quickstart, protocol, and smoke guidance
 - Example sequences located under `examples/`
-- Skills under `skills/`, particularly `android-repl`
+- Skills under `skills/`, particularly `agent-android`
 
 ## How to contribute
 
@@ -21,3 +21,5 @@ Thank you for helping shape the public `aivanelabs/ai-rpa` experience!
 - Keep private runtime logic out of these public assets.
 - Cite real device or protocol observations when describing smoke flows.
 - Keep changes focused; this repository stays lean while the first public release is prepared.
+
+
