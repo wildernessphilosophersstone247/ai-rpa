@@ -13,14 +13,14 @@ This skill assumes:
 
 - the phone and the controlling machine are on the same LAN
 - the Android REPL app is installed and its local API service is running
-- the public Python client at `../../clients/python/aria_tree.py` is available
+- the public Python client at `../../clients/python/aivane_repl.py` is available
 
 ## Quick Start
 
 Use the public client directly:
 
 ```bash
-python ../../clients/python/aria_tree.py --repl --url http://<device-ip>:8080
+python ../../clients/python/aivane_repl.py --repl --url http://<device-ip>:8080
 ```
 
 If the user already saved the device URL before, the client can be used without `--url`.
@@ -48,7 +48,7 @@ If health fails, stop and fix connectivity before trying UI actions.
 List launcher apps:
 
 ```bash
-python ../../clients/python/aria_tree.py --apps --url http://<device-ip>:8080
+python ../../clients/python/aivane_repl.py --apps --url http://<device-ip>:8080
 ```
 
 Inside the REPL, use:
@@ -64,13 +64,13 @@ Use launcher discovery when the user does not know the package name.
 Launch an app:
 
 ```bash
-python ../../clients/python/aria_tree.py --launch <package> --url http://<device-ip>:8080
+python ../../clients/python/aivane_repl.py --launch <package> --url http://<device-ip>:8080
 ```
 
 Then inspect the current UI:
 
 ```bash
-python ../../clients/python/aria_tree.py --list --url http://<device-ip>:8080
+python ../../clients/python/aivane_repl.py --list --url http://<device-ip>:8080
 ```
 
 ### 4. Interact step by step

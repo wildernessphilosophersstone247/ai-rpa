@@ -4,8 +4,12 @@ This folder contains the public Python-side clients for the first AIVane Android
 
 ## Included
 
+- `aivane_repl.py`
+  - Preferred public-facing entrypoint for the Android REPL beta
+  - Delegates to the current compatibility implementation
+
 - `aria_tree.py`
-  - REPL-first Android control client
+  - Compatibility client retained for existing flows and older references
   - Supports launcher discovery, UI listing, tap, input, swipe, back, home, screenshot, and related smoke actions
 
 - `run_template_via_api.py`
@@ -17,8 +21,9 @@ This folder contains the public Python-side clients for the first AIVane Android
 Start with:
 
 ```bash
-python aria_tree.py --repl --url http://<device-ip>:8080
+python aivane_repl.py --repl --url http://<device-ip>:8080
 ```
 
-Only move to `run_template_via_api.py` when you already have a stable template file and want deterministic replay.
+`aria_tree.py` remains available as a compatibility entrypoint while the public naming is being cleaned up.
 
+Only move to `run_template_via_api.py` when you already have a stable template file and want deterministic replay.

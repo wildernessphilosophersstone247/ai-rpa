@@ -26,7 +26,7 @@ curl http://<device-ip>:8080/health
 3. List launcher apps:
 
 ```bash
-python ../../clients/python/aria_tree.py --apps --url http://<device-ip>:8080
+python ../../clients/python/aivane_repl.py --apps --url http://<device-ip>:8080
 ```
 
 4. Launch the target app.
@@ -42,4 +42,3 @@ python ../../clients/python/aria_tree.py --apps --url http://<device-ip>:8080
 - launch succeeds
 - the UI tree refreshes after actions
 - the user can complete at least one inspect -> act -> inspect loop
-

@@ -52,7 +52,6 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any, Tuple
 
 # ---------------------------------------------------------------------------
-# REPL readline 支持（可选，改善命令行体验）
 # ---------------------------------------------------------------------------
 try:
     import readline
@@ -60,10 +59,8 @@ try:
 except ImportError:
     _HAS_READLINE = False
 
-# 设置 I/O 编码为 UTF-8 (Windows + 管道模式兼容)
 if sys.platform == 'win32':
     import io
-    # sys.stdin 必须在 sys.stdout 之前包装，因为 input() 依赖 stdin
     sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8', errors='replace')
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
@@ -187,7 +184,6 @@ class AriaTreeClient:
         self._package_name_cache: Optional[str] = None
 
     # ---------------------------------------------------------------------------
-    # 基础 API
     # ---------------------------------------------------------------------------
 
     def _api_call(self, template: Dict) -> Optional[Dict]:
@@ -461,7 +457,6 @@ class AriaTreeClient:
         return None
 
     # ---------------------------------------------------------------------------
-    # P0-4 树复用: 智能获取（缓存 + 可选强制刷新）
     # ---------------------------------------------------------------------------
 
     def get_aria_tree(self, wait: int = 0, force_refresh: bool = False
@@ -513,7 +508,6 @@ class AriaTreeClient:
             return None
 
     # ---------------------------------------------------------------------------
-    # P0-5 等待元素出现
     # ---------------------------------------------------------------------------
 
     def wait_for_element(self, text: str = None, refId: int = None,
@@ -546,7 +540,6 @@ class AriaTreeClient:
         return None
 
     # ---------------------------------------------------------------------------
-    # 操作: 点击
     # ---------------------------------------------------------------------------
 
     def tap_element(self, refId: int) -> bool:
@@ -569,7 +562,6 @@ class AriaTreeClient:
         )
 
     # ---------------------------------------------------------------------------
-    # 操作: 输入文本 (P0-3之前已有)
     # ---------------------------------------------------------------------------
 
     def input_to_element(self, refId: int, text: str, clearFirst: bool = True) -> bool:
@@ -600,7 +592,6 @@ class AriaTreeClient:
         )
 
     # ---------------------------------------------------------------------------
-    # P0-2 滑动手势
     # ---------------------------------------------------------------------------
 
     def swipe(self, direction: str = "down", duration: int = 300,
@@ -630,7 +621,6 @@ class AriaTreeClient:
         )
 
     # ---------------------------------------------------------------------------
-    # P0-1 截图
     # ---------------------------------------------------------------------------
 
     def screenshot(self, output_path: str = None,
@@ -644,7 +634,6 @@ class AriaTreeClient:
 
         if not data:
             print("Screenshot: fallback to template-based capture", file=sys.stderr)
-            # 降级方案：通过模板执行截图
             return self._screenshot_via_template(output_path, quality)
 
         if not data.get('success'):
@@ -659,12 +648,10 @@ class AriaTreeClient:
         image_bytes = base64.b64decode(base64_data)
         size_kb = len(image_bytes) // 1024
 
-        # 确定输出路径
         if not output_path:
             timestamp = time.strftime("%Y%m%d_%H%M%S")
             output_path = f"screenshot_{timestamp}.jpg"
 
-        # 自动创建目录
         output_dir = os.path.dirname(output_path)
         if output_dir and not os.path.exists(output_dir):
             os.makedirs(output_dir)
@@ -701,7 +688,6 @@ class AriaTreeClient:
             print(f"Screenshot failed: {msg}", file=sys.stderr)
             return None
 
-        # 下载截图文件
         file_data = self._download_binary("/download", {"path": save_path})
         if not file_data:
             print(f"Screenshot: file download failed (but API succeeded)", file=sys.stderr)
@@ -767,7 +753,6 @@ class AriaTreeClient:
         return self._package_name_cache
 
     # ---------------------------------------------------------------------------
-    # P0-3 按键操作
     # ---------------------------------------------------------------------------
 
     def press_key(self, key: str) -> bool:
@@ -788,7 +773,6 @@ class AriaTreeClient:
             print(f"Unknown key: {key}. Available: {', '.join(key_map.keys())}", file=sys.stderr)
             return False
 
-        # back 和 home 有独立 operationType，menu/enter/delete 用 back + text input 模拟
         if op_type == "android.press.back":
             template = {"templateId": "press-back", "operations": [
                 {"operationType": "android.press.back", "parameters": {}}]}
@@ -796,10 +780,6 @@ class AriaTreeClient:
             template = {"templateId": "press-home", "operations": [
                 {"operationType": "android.press.home", "parameters": {}}]}
         else:
-            # menu / enter / delete: 用 adb 模拟 keyevent（通过 android.touch.tap 不合适，
-            # 用 AccessibilityService 的 dispatchGesture 或 InputMethod）
-            # 目前暂用 back operation type + keyName 参数（需服务端支持）
-            # 降级：直接打印不支持
             print(f"Key '{key}' not yet supported, please use --back for back key", file=sys.stderr)
             return False
 
@@ -814,7 +794,6 @@ class AriaTreeClient:
         return False
 
     # ---------------------------------------------------------------------------
-    # P0-bonus: 获取元素属性
     # ---------------------------------------------------------------------------
 
     def get_attribute(self, refId: int, attribute: str) -> Optional[str]:
@@ -858,7 +837,6 @@ class AriaTreeClient:
         return str(value) if value is not None else None
 
     # ---------------------------------------------------------------------------
-    # 应用操作
     # ---------------------------------------------------------------------------
 
     def launch_app(self, package: str) -> bool:
@@ -880,7 +858,6 @@ class AriaTreeClient:
         )
 
     # ---------------------------------------------------------------------------
-    # 查找工具
     # ---------------------------------------------------------------------------
 
     def _find_element_by_refId(self, refId: int,
@@ -925,23 +902,19 @@ class AriaTreeClient:
         import re
         attrs = {}
 
-        # 解析所有 [...] 条件
         attrs = {}
         i = 0
         while i < len(xpath):
             if xpath[i] == '[':
                 j = i + 1
-                # 找匹配的 ]：depth 计数，但遇到引号时暂停 depth 计数
                 depth = 1
                 in_quote = None  # 当前是否在引号内，以及是什么引号
                 while j < len(xpath) and depth > 0:
                     ch = xpath[j]
                     if in_quote is not None:
-                        # 在引号内：只找结束引号
                         if ch == in_quote:
                             in_quote = None
                     else:
-                        # 不在引号内：处理括号和引号开始
                         if ch == '[':
                             depth += 1
                         elif ch == ']':
@@ -951,20 +924,15 @@ class AriaTreeClient:
                     j += 1
                 cond = xpath[i+1:j-1]
                 if cond.startswith('@'):
-                    # @attr='value' 或 @attr=value
-                    # 处理格式: text='值' 或 text="值" 或 className='ActionBar$Tab'
                     eq_pos = cond.find('=')
                     if eq_pos > 0:
                         attr = cond[1:eq_pos].strip()
                         raw_value = cond[eq_pos+1:].strip()
-                        # 提取引号内的值（支持嵌套括号，如 'x'][@class='y']）
                         if raw_value and raw_value[0] in ("'", '"'):
                             quote_char = raw_value[0]
-                            # 找值的结束引号（跳过 \' \' 转义）
                             end = 1
                             while end < len(raw_value):
                                 if raw_value[end] == quote_char:
-                                    # 检查转义
                                     num_backslash = 0
                                     j2 = end - 1
                                     while j2 >= 1 and raw_value[j2] == '\\':
@@ -975,7 +943,6 @@ class AriaTreeClient:
                                 end += 1
                             value = raw_value[1:end]  # 去掉首尾引号
                         else:
-                            # 无引号，值到 ] 或空格为止
                             bracket_pos = raw_value.find(']')
                             value = raw_value[:bracket_pos].strip() if bracket_pos >= 0 else raw_value.strip()
                         if value:
@@ -990,20 +957,15 @@ class AriaTreeClient:
                                 attrs[f'_{axis.rstrip(":")}'] = tag
                             break
                     else:
-                        # clickable, focusable 等布尔属性，或 [N] 纯数字位置下标
                         cond = cond.strip()
                         if cond in ('clickable', 'focusable', 'long-clickable', 'scrollable'):
                             attrs[cond] = True
                         elif cond.isdigit():
-                            # Button[3] → 位置下标（1-based，第3个同类 sibling）
                             attrs['_position'] = int(cond)
                 i = j
             else:
                 i += 1
 
-        # 构建兄弟映射（基于 xpath prefix + position index 关系）
-        # 策略：从 xpath 字段提取 segment，建立 (depth, segment) -> element 映射，
-        # 再找 parent-child 关系（用 prefix 匹配找最长公共前缀父节点）
         elem_refId: Dict[int, Dict] = {e.get('refId'): e for e in elements if e.get('refId') is not None}
         # seg_to_elem[(depth, seg)] = elem
         seg_to_elem: Dict[tuple, Dict] = {}
@@ -1015,7 +977,6 @@ class AriaTreeClient:
             segs = [s for s in xp.split('/') if s and s != 'WindowRoot']
             for di, seg in enumerate(segs):
                 depth = di + 1
-                # 存所有匹配，供后续找最长前缀
                 key = (depth, seg)
                 if key not in seg_to_elem:
                     seg_to_elem[key] = []
@@ -1027,13 +988,11 @@ class AriaTreeClient:
             parts = []
             for di in range(min(up_to_depth, len(segs))):
                 seg = segs[di]
-                # 去掉 [N] 索引后缀，取类名
                 idx = seg.find('[')
                 cls = seg[:idx] if idx >= 0 else seg
                 parts.append(cls)
             return '/'.join(parts)
 
-        # 建立 parent_of: refId -> parent refId
         parent_of: Dict[int, int] = {}
         for e in elements:
             rid = e.get('refId')
@@ -1046,12 +1005,10 @@ class AriaTreeClient:
                 parent_of[rid] = None
                 continue
             parent_seg = segs[-2]  # 倒数第二个 segment = 父节点
-            # 尝试直接用 (depth-1, parent_seg) 查找
             candidates = seg_to_elem.get((depth - 1, parent_seg), [])
             if len(candidates) == 1:
                 parent_of[rid] = candidates[0].get('refId')
             elif len(candidates) > 1:
-                # 多个可能，手动找最长前缀匹配
                 best = None
                 best_len = 0
                 xp_prefix = '/'.join(segs[:-1])
@@ -1068,13 +1025,11 @@ class AriaTreeClient:
             else:
                 parent_of[rid] = None
 
-        # 建立 parent_children
         parent_children2: Dict[int, List[int]] = {}
         for rid, pid in parent_of.items():
             if pid is not None:
                 parent_children2.setdefault(pid, []).append(rid)
 
-        # 建立 elem_refId map
         elem_refId2: Dict[int, Dict] = {e.get('refId'): e for e in elements if e.get('refId') is not None}
 
         def matches(elem: Dict) -> bool:
@@ -1083,7 +1038,6 @@ class AriaTreeClient:
                     if str(elem.get('refId', '')) != v:
                         return False
                 elif k == 'text':
-                    # 精确匹配：text 属性必须完全等于给定值
                     if (elem.get('text', '') or '') != v:
                         return False
                 elif k in ('contentDesc', 'contentDescription', 'content-desc', 'contentdesc'):
@@ -1102,7 +1056,6 @@ class AriaTreeClient:
                     if not elem.get('focusable'):
                         return False
                 elif k in ('x', 'y'):
-                    # @x=N / @y=N → 与元素的 x/y 坐标匹配（元素值是 int，v 是 str）
                     elem_coord = elem.get(k)
                     try:
                         target = int(v)
@@ -1165,12 +1118,10 @@ class AriaTreeClient:
         import re
         attrs = {}
 
-        # 解析所有 [...] 条件（复用 find_by_xpath 的解析逻辑）
         i = 0
         while i < len(xpath):
             if xpath[i] == '[':
                 j = i + 1
-                # 找匹配的 ]：depth 计数，但遇到引号时暂停 depth 计数
                 depth = 1
                 in_quote = None
                 while j < len(xpath) and depth > 0:
@@ -1227,7 +1178,6 @@ class AriaTreeClient:
             else:
                 i += 1
 
-        # 构建 parent→children 映射（复用 _build_tree_structure 栈方法）
         elem_refId: Dict[int, Dict] = {e.get('refId'): e for e in elements if e.get('refId') is not None}
         nodes = self._build_tree_structure(elements)
         parent_children: Dict[int, List[int]] = {}
@@ -1242,7 +1192,6 @@ class AriaTreeClient:
                     if str(elem.get('refId', '')) != v:
                         return False
                 elif k == 'text':
-                    # 精确匹配：text 属性必须完全等于给定值
                     if (elem.get('text', '') or '') != v:
                         return False
                 elif k in ('contentDesc', 'contentDescription', 'content-desc', 'contentdesc'):
@@ -1344,7 +1293,6 @@ class AriaTreeClient:
 
     def _parse_refid_from_xpath_segment(self, segment: str) -> Optional[int]:
         """从 xpath 片段（如 'LinearLayout[1][@refId=5]'）中提取 refId"""
-        # 找 [@refId=N] 模式
         i = 0
         while i < len(segment):
             if segment[i] == '[':
@@ -1391,7 +1339,6 @@ class AriaTreeClient:
         elem_xpath: Dict[int, str] = {}  # refId -> xpath prefix (不含当前段)
         elem_depth: Dict[int, int] = {}
 
-        # 第一遍：收集所有有 refId 的元素的 xpath 前缀
         for elem in tree:
             ref_id = elem.get('refId')
             if ref_id is None:
@@ -1400,34 +1347,26 @@ class AriaTreeClient:
             segments = [s for s in xpath.split('/') if s and s != 'WindowRoot']
             depth = len(segments)
             elem_depth[ref_id] = depth
-            # xpath 前缀 = 去掉最后一个 segment 后的路径
             if len(segments) >= 1:
                 prefix = '/' + '/'.join(segments[:-1])
             else:
                 prefix = '/WindowRoot'
             elem_xpath[ref_id] = prefix
 
-        # 第二遍：用栈找 parent
-        # 栈: depth -> refId of the last element at that depth
         stack: List[int] = []  # 按 depth 顺序排列的 refId 列表，stack[depth] = refId
         elem_parent: Dict[int, Optional[int]] = {}
 
-        # 第二遍：用栈找 parent（同深度按原始顺序维持）
         indexed = [(elem_depth[rid], i, rid) for i, rid in enumerate(elem_depth)]
         indexed.sort(key=lambda x: (x[0], x[1]))
 
         for depth, _, ref_id in indexed:
             elem_parent[ref_id] = None
-            # pop 栈中深度 >= 当前 depth 的元素
             while len(stack) > depth:
                 stack.pop()
-            # 当前元素的 parent 是栈顶（如果存在）
             if stack:
                 elem_parent[ref_id] = stack[-1]
-            # push 当前元素到栈顶
             stack.append(ref_id)
 
-        # 第三步：构建 nodes
         nodes: Dict[int, Dict] = {}
         for elem in tree:
             ref_id = elem.get('refId')
@@ -1463,7 +1402,6 @@ class AriaTreeClient:
         if target_ref_id not in nodes:
             return None
 
-        # 从 target 往根回溯，收集路径
         path_ref_ids: List[int] = []
         cur = target_ref_id
         while cur is not None:
@@ -1471,7 +1409,6 @@ class AriaTreeClient:
             cur = nodes[cur]['parent_ref_id']
         path_ref_ids.reverse()  # 从根到 target
 
-        # 构建绝对路径
         segments: List[str] = []
         for ref_id in path_ref_ids:
             node = nodes[ref_id]
@@ -1480,10 +1417,8 @@ class AriaTreeClient:
             if not cls:
                 continue
 
-            # 计算当前节点在其同类 sibling 中的索引（1-based）
             parent_ref_id = node['parent_ref_id']
             if parent_ref_id is None:
-                # 根节点
                 idx = 1
             else:
                 parent_node = nodes.get(parent_ref_id)
@@ -1491,7 +1426,6 @@ class AriaTreeClient:
                     idx = 1
                 else:
                     siblings = parent_node['children_ref_ids']
-                    # 找所有同 className 的 sibling
                     same_class_siblings = [
                         sid for sid in siblings
                         if sid in nodes and
@@ -1504,8 +1438,6 @@ class AriaTreeClient:
 
             segments.append(f'{cls}[{idx}]')
 
-        # 用 // 开头，这样后续的 / 就是 child 轴，而非 descendant 轴
-        # //A/B/C = A 的第 N 个子节点 B 的第 M 个子节点 C
         return '//' + '/'.join(segments)
 
     def _strip_refid_annotation(self, segment: str) -> str:
@@ -1753,7 +1685,6 @@ class AriaTreeClient:
         if target_ref_id not in nodes:
             return None
 
-        # 收集从 target 到根的路径 (不含根)
         path_ids: List[int] = []
         cur = target_ref_id
         while cur is not None:
@@ -1761,8 +1692,6 @@ class AriaTreeClient:
             cur = nodes[cur]['parent_ref_id']
         path_ids.reverse()  # 从根到 target
 
-        # 从 target 往祖先方向遍历，找最近的唯一祖先
-        # （不含 target 本身）
         for i in range(len(path_ids) - 2, -1, -1):
             ancestor_id = path_ids[i]
             ancestor_node = nodes[ancestor_id]
@@ -1772,17 +1701,13 @@ class AriaTreeClient:
             a_desc = ancestor_elem.get('contentDesc', '') or ''
             a_rid = ancestor_elem.get('resourceId', '') or ''
 
-            # 尝试构建非 refId 的唯一 XPath
-            # 策略 1: text 优先（大多数唯一）
             if a_text:
                 xp = f'//{a_cls}[@text={self._escape_xpath_value(a_text)}]'
                 if len(self.find_by_xpath_all(tree, xp)) == 1:
-                    # 唯一！构建 descendant path
                     return self._build_descendant_path(
                         tree, nodes, ancestor_id, target_ref_id, xp
                     )
 
-            # 策略 2: contentDesc
             if a_desc:
                 xp = f'//{a_cls}[@contentDescription={self._escape_xpath_value(a_desc)}]'
                 if len(self.find_by_xpath_all(tree, xp)) == 1:
@@ -1790,7 +1715,6 @@ class AriaTreeClient:
                         tree, nodes, ancestor_id, target_ref_id, xp
                     )
 
-            # 策略 3: resourceId
             if a_rid:
                 xp = f'//{a_cls}[@resourceId={self._escape_xpath_value(a_rid)}]'
                 if len(self.find_by_xpath_all(tree, xp)) == 1:
@@ -1798,7 +1722,6 @@ class AriaTreeClient:
                         tree, nodes, ancestor_id, target_ref_id, xp
                     )
 
-            # 策略 4: text + resourceId 组合
             if a_text and a_rid:
                 xp = f'//{a_cls}[@text={self._escape_xpath_value(a_text)}][@resourceId={self._escape_xpath_value(a_rid)}]'
                 if len(self.find_by_xpath_all(tree, xp)) == 1:
@@ -1806,7 +1729,6 @@ class AriaTreeClient:
                         tree, nodes, ancestor_id, target_ref_id, xp
                     )
 
-            # 策略 5: text + clickable 组合
             if a_text and ancestor_elem.get('clickable'):
                 xp = f'//{a_cls}[@text={self._escape_xpath_value(a_text)}][clickable]'
                 if len(self.find_by_xpath_all(tree, xp)) == 1:
@@ -1824,7 +1746,6 @@ class AriaTreeClient:
         从 ancestor XPath 构建到 target 的 descendant 路径。
         使用 className + sibling index 来区分多个同类型中间节点。
         """
-        # 从 ancestor 到 target 的中间节点（不含两端）
         path_ids: List[int] = []
         cur = target_ref_id
         while cur != ancestor_id:
@@ -1841,7 +1762,6 @@ class AriaTreeClient:
             if not cls:
                 continue
 
-            # 计算 sibling index
             parent_ref = node['parent_ref_id']
             parent_node = nodes.get(parent_ref)
             siblings = parent_node['children_ref_ids'] if parent_node else []
@@ -1855,7 +1775,6 @@ class AriaTreeClient:
             parts.append(f'{cls}[{idx}]')
 
         if not parts:
-            # ancestor 就是 target，直接返回
             return ancestor_xp
 
         return ancestor_xp + '//' + '/'.join(parts)
@@ -1897,53 +1816,40 @@ class AriaTreeClient:
         desc = elem.get('contentDesc', '') or ''
         rid = elem.get('resourceId', '') or ''
 
-        # === 非 refId 策略（最优先，不依赖页面重建）===
 
-        # 策略 A0: target 自身 text（最优先：直接用元素的 text 定位）
         if text:
             xp = f'//{cls}[@text={self._escape_xpath_value(text)}]'
             add(xp, 'text')
-            # 如果 text 唯一，再加 text+clickable 变体
             if elem.get('clickable'):
                 add(f'//{cls}[@text={self._escape_xpath_value(text)}][clickable]', 'text+clickable')
 
-        # 策略 A1: target 自身 contentDesc（图标/无文本元素）
         if desc:
             xp = f'//{cls}[@contentDescription={self._escape_xpath_value(desc)}]'
             add(xp, 'contentDescription')
 
-        # 策略 B: ancestor-relative
-        # 从 target 往祖先走，找最近的唯一祖先，再用 descendant // 定位 target
         if ref_id is not None:
             ar_path = self._ancestor_to_target_path(tree, ref_id)
             if ar_path:
                 add(ar_path, 'ancestor-relative')
 
-        # 策略 C: className + resourceId
         if rid:
             add(f'//{cls}[@resourceId={self._escape_xpath_value(rid)}]', 'className+resourceId')
 
-        # 策略 D: className + text + resourceId（组合）
         if text and rid:
             add(f'//{cls}[@text={self._escape_xpath_value(text)}][@resourceId={self._escape_xpath_value(rid)}]',
                 'className+text+resourceId')
 
-        # 策略 E: className + text + contentDesc（组合）
         if text and desc:
             add(f'//{cls}[@text={self._escape_xpath_value(text)}][@contentDescription={self._escape_xpath_value(desc)}]',
                 'className+text+contentDescription')
 
-        # === 备选兜底：className + sibling position index ===
-        # 通过内建树结构计算 target 在兄弟节点中的位置（不含 refId）
         if ref_id is not None:
             pos_path = self._ancestor_to_target_path(tree, ref_id)
             if pos_path and '[@refId=' not in pos_path:
                 add(pos_path, 'className+position')
 
-        # 策略 I: className 单独兜底（最宽松）
         add(f'//{cls}', 'className-only')
 
-        # 排序：1个匹配的最前（推荐），多个匹配按 strategy_order 排
         strategy_order = {
             'text': 0,
             'contentDescription': 1,
@@ -1988,7 +1894,6 @@ class AriaTreeClient:
 
 
 # ---------------------------------------------------------------------------
-# 格式化输出
 # ---------------------------------------------------------------------------
 
 def format_element(elem: Dict) -> str:
@@ -2064,7 +1969,6 @@ def print_tree(elements: List[Dict], filter_text: str = None,
 
 
 # ---------------------------------------------------------------------------
-# REPL 交互模式
 # ---------------------------------------------------------------------------
 
 class AriaReplSession:
@@ -2100,7 +2004,6 @@ class AriaReplSession:
     """
 
     COMMANDS = [
-        # 浏览
         ('l', 'list',          '列出元素（复用缓存）'),
         ('ss', 'snapshot',     '刷新树并列出'),
         ('f', 'find',          '按文本过滤'),
@@ -2109,7 +2012,6 @@ class AriaReplSession:
         ('x', 'xpath',        '获取 XPath（显示候选+匹配数）'),
         ('xx', None,           '用自动XPath点击（选最佳唯一候选）'),
         ('vx', 'validatex',    '运行时验证 XPath'),
-        # 交互
         ('t', 'tap',          '点击元素 (refId)'),
         ('tx', 'tapx',       '用 XPath 点击元素'),
         ('i', 'input',        '输入文本 (refId text)'),
@@ -2117,14 +2019,10 @@ class AriaReplSession:
         ('sw', 'swipe',       '滑动 (d/u/l/r)'),
         ('p', 'press',        '按键 (back/home/menu)'),
         ('b', 'back',         '按返回键'),
-        # 等待
         ('wf', 'waitfor',    '等待元素出现'),
-        # 信息
         ('g', 'get',         '获取元素属性'),
         ('s', 'screenshot',  '截图'),
-        # 应用
         ('la', 'launch',     '启动 App'),
-        # 会话
         ('raw', None,        '切换 raw JSON 输出'),
         ('vars', None,        '显示会话变量'),
         ('apps', None,        '列出 launcher apps'),
@@ -2141,7 +2039,6 @@ class AriaReplSession:
         self._prompt: str = "aria> "
         self.variables: Dict[str, Any] = {}      # 会话变量（LAST_XPATH 等）
 
-        # readline 历史
         if _HAS_READLINE and history_file:
             try:
                 readline.read_history_file(history_file)
@@ -2149,7 +2046,6 @@ class AriaReplSession:
                 pass
             self._history_file = history_file
 
-        # 建立命令别名表
         self._aliases: Dict[str, str] = {}
         for short, full, _ in self.COMMANDS:
             if short:
@@ -2158,7 +2054,6 @@ class AriaReplSession:
                 self._aliases[full] = full
 
     # -------------------------------------------------------------------------
-    # 主循环
     # -------------------------------------------------------------------------
 
     def run(self):
@@ -2189,7 +2084,6 @@ class AriaReplSession:
         print("Goodbye!")
 
     # -------------------------------------------------------------------------
-    # 行解析
     # -------------------------------------------------------------------------
 
     def _parse_line(self, line: str) -> Tuple[str, List[str]]:
@@ -2227,25 +2121,20 @@ class AriaReplSession:
                 return cmd, [xpath, text] if xpath and text else [remainder]
             return cmd, [remainder]
 
-        # 先用 shlex 正确处理引号
         tokens = shlex.split(line, posix=False)
         if not tokens:
             return '', []
         cmd = tokens[0]
         args = tokens[1:]
 
-        # 处理 --flag value 风格的 args（合并到 dict 后再展平）
-        # 保留原始 args 用于灵活性，这里不做额外处理
         return cmd, args
 
     # -------------------------------------------------------------------------
-    # 命令派发
     # -------------------------------------------------------------------------
 
     def _execute_line(self, line: str) -> Any:
         cmd, args = self._parse_line(line)
 
-        # 解析别名
         resolved = self._aliases.get(cmd, cmd)
         handler_name = f"_cmd_{resolved}"
         handler = getattr(self, handler_name, None)
@@ -2260,7 +2149,6 @@ class AriaReplSession:
             return False
 
     # -------------------------------------------------------------------------
-    # readline 封装
     # -------------------------------------------------------------------------
 
     def _readline(self) -> Optional[str]:
@@ -2284,7 +2172,6 @@ class AriaReplSession:
                 pass
 
     # -------------------------------------------------------------------------
-    # 树管理（自动刷新）
     # -------------------------------------------------------------------------
 
     def _ensure_tree(self, force=False) -> Optional[List[Dict]]:
@@ -2355,7 +2242,6 @@ class AriaReplSession:
         return validated
 
     # -------------------------------------------------------------------------
-    # 命令: 浏览
     # -------------------------------------------------------------------------
 
     def _cmd_list(self, args: List[str]) -> bool:
@@ -2380,7 +2266,6 @@ class AriaReplSession:
         self._print_tree(tree, f"ARIA Tree (refreshed) - {len(tree)} elements")
         return True
 
-    # 简化别名
     def _cmd_l(self, args: List[str]) -> bool:
         return self._cmd_list(args)
 
@@ -2388,7 +2273,6 @@ class AriaReplSession:
         return self._cmd_snapshot(args)
 
     # -------------------------------------------------------------------------
-    # 命令: 过滤
     # -------------------------------------------------------------------------
 
     def _cmd_find(self, args: List[str]) -> bool:
@@ -2487,7 +2371,6 @@ class AriaReplSession:
                 badge = f' ⚠️  {count}个'
             else:
                 badge = f' ❌  {count}个'
-            # 截断过长的 xpath 显示
             xp_display = xp if len(xp) <= 55 else xp[:52] + '...'
             print(f"  [{i}] {badge:<8} {xp_display}  ({strategy})")
             if info and count == 1:
@@ -2506,7 +2389,6 @@ class AriaReplSession:
             print(f"  ⚠  最佳候选运行时匹配 {best[1]} 个元素，可能不够唯一")
             print(f"     推荐: {best[0]}")
 
-        # 如果指定了序号，直接使用该 XPath 并验证
         if len(args) >= 2 and args[1].isdigit():
             idx = int(args[1])
             if 0 <= idx < len(candidates):
@@ -2515,7 +2397,6 @@ class AriaReplSession:
                 print(f"  策略: {chosen[2]}，运行时匹配 {chosen[1]} 个元素")
                 if chosen[1] > 1:
                     print(f"  [!] 警告: 此 XPath 运行时匹配 {chosen[1]} 个元素，点击可能不精确！")
-                # 将选中的 xpath 存入会话变量
                 self.variables['LAST_XPATH'] = chosen[0]
                 self.variables['LAST_XPATH_COUNT'] = chosen[1]
                 self.variables['LAST_XPATH_STRATEGY'] = chosen[2]
@@ -2523,7 +2404,6 @@ class AriaReplSession:
             else:
                 print(f"  [!] 序号 {idx} 超出范围 (0-{len(candidates)-1})")
         else:
-            # 默认使用第一个（最佳）候选
             self.variables['LAST_XPATH'] = best[0]
             self.variables['LAST_XPATH_COUNT'] = best[1]
             self.variables['LAST_XPATH_STRATEGY'] = best[2]
@@ -2556,7 +2436,6 @@ class AriaReplSession:
             return False
         candidates = self._runtime_validate_candidates(raw_candidates)
 
-        # 找第一个匹配数为1的候选
         unique: Optional[Tuple[str, int, str, Optional[Dict[str, Any]]]] = None
         for xp, count, strategy, info in candidates:
             if count == 1:
@@ -2568,7 +2447,6 @@ class AriaReplSession:
             print(f"  ✓ refId={refId} → XPath (唯一匹配): {xp}")
             print(f"    策略: {strategy}")
         else:
-            # 没有唯一匹配，使用最佳候选但警告
             xp, count, strategy, _ = candidates[0]
             print(f"  [!] refId={refId}: 没有找到唯一匹配的 XPath！")
             print(f"  ⚠  使用最佳候选: {xp}")
@@ -2578,7 +2456,6 @@ class AriaReplSession:
             print(f"  提示: 用 'x {refId}' 查看所有候选，用 'x {refId} <序号>' 选中非唯一 XPath")
             return False
 
-        # 用此 XPath 执行点击
         ok = self.client.tap_by_xpath(xp)
         if ok:
             self._invalidate_tree()
@@ -2612,7 +2489,6 @@ class AriaReplSession:
         return self._cmd_validatex(args)
 
     # -------------------------------------------------------------------------
-    # 命令: 交互
     # -------------------------------------------------------------------------
 
     def _cmd_tap(self, args: List[str]) -> bool:
@@ -2729,7 +2605,6 @@ class AriaReplSession:
         return self._cmd_back(args)
 
     # -------------------------------------------------------------------------
-    # 命令: 等待
     # -------------------------------------------------------------------------
 
     def _cmd_waitfor(self, args: List[str]) -> bool:
@@ -2763,7 +2638,6 @@ class AriaReplSession:
         return self._cmd_waitfor(args)
 
     # -------------------------------------------------------------------------
-    # 命令: 信息
     # -------------------------------------------------------------------------
 
     def _cmd_get(self, args: List[str]) -> bool:
@@ -2792,7 +2666,6 @@ class AriaReplSession:
         return self._cmd_screenshot(args)
 
     # -------------------------------------------------------------------------
-    # 命令: 应用
     # -------------------------------------------------------------------------
 
     def _cmd_launch(self, args: List[str]) -> bool:
@@ -2824,7 +2697,6 @@ class AriaReplSession:
         return True
 
     # -------------------------------------------------------------------------
-    # 命令: 会话
     # -------------------------------------------------------------------------
 
     def _cmd_raw(self, args: List[str]) -> bool:
@@ -2871,7 +2743,6 @@ class AriaReplSession:
         return True
 
     # -------------------------------------------------------------------------
-    # 命令: 帮助 & 退出
     # -------------------------------------------------------------------------
 
     def _cmd_help(self, args: List[str]) -> bool:
@@ -2890,7 +2761,6 @@ class AriaReplSession:
         return self._cmd_quit(args)
 
     # -------------------------------------------------------------------------
-    # 帮助文本
     # -------------------------------------------------------------------------
 
     def _print_help(self):
@@ -2976,13 +2846,11 @@ def main():
     parser.add_argument('--no-cache', action='store_true',
                        help='Force refresh ARIA tree (bypass cache)')
 
-    # --wait-for: 等待元素出现
     parser.add_argument('--wait-for', type=str, metavar='TEXT',
                        help='Wait for element with text matching to appear')
     parser.add_argument('--timeout', '-t', type=int, default=30,
                        help='Max wait time for --wait-for (default: 30s)')
 
-    # 操作组（互斥）
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--list', '-l', action='store_true', help='List all elements')
     group.add_argument('--screenshot', '-s', nargs='?', const='_auto_', metavar='OUTPUT_PATH',
@@ -3005,17 +2873,14 @@ def main():
     group.add_argument('--text', type=str, metavar='TEXT', help='Query by text')
     group.add_argument('--inputs', action='store_true', help='List all input fields')
 
-    # 滑动参数
     parser.add_argument('--duration', type=int, default=300,
                        help='Swipe duration in ms (default: 300)')
     parser.add_argument('--distance', type=float, default=0.5,
                        help='Swipe distance ratio 0.0-1.0 (default: 0.5)')
 
-    # 截图参数
     parser.add_argument('--quality', '-q', type=int, default=80,
                        help='Screenshot quality 1-100 (default: 80)')
 
-    # 输出选项
     parser.add_argument('--filter', '-f', type=str, help='Filter elements by text')
     parser.add_argument('--raw', action='store_true', help='Output raw JSON')
     parser.add_argument('--output', '-o', type=str, help='Save ARIA tree to JSON file')
@@ -3023,7 +2888,6 @@ def main():
     args = parser.parse_args()
     url = require_base_url(args.url)
 
-    # REPL 模式（优先级最高）
     if args.repl:
         hist = os.path.expanduser('~/.aria_tree_history')
         session = AriaReplSession(url=url, history_file=hist)
@@ -3032,11 +2896,9 @@ def main():
 
     client = AriaTreeClient(url)
 
-    # 每次操作后树可能失效，使用 --no-cache 强制刷新
     force_refresh = args.no_cache
 
     # ------------------------------------------------------------------
-    # 单一操作：不需要获取树
     # ------------------------------------------------------------------
 
     if args.back:
@@ -3065,7 +2927,6 @@ def main():
         sys.exit(0)
 
     if args.screenshot is not None:
-        # args.screenshot 为 '_auto_' 时表示有 --screenshot 但无路径参数
         output_path = None if args.screenshot == '_auto_' else args.screenshot
         result = client.screenshot(output_path=output_path, quality=args.quality)
         sys.exit(0 if result else 1)
@@ -3086,14 +2947,12 @@ def main():
         sys.exit(0 if success else 1)
 
     # ------------------------------------------------------------------
-    # --wait-for: 等待元素出现（返回元素后可直接操作）
     # ------------------------------------------------------------------
     if args.wait_for:
         print(f"Waiting for element '{args.wait_for}' (timeout={args.timeout}s)...",
               file=sys.stderr)
         elem = client.wait_for_element(text=args.wait_for, timeout=args.timeout)
         if elem:
-            # 找到元素后打印 refId 供后续使用
             refId = elem.get('refId')
             print(f"refId={refId} found: text='{elem.get('text', '')}' "
                   f"class={elem.get('simpleClassName', '')} "
@@ -3103,7 +2962,6 @@ def main():
             sys.exit(1)
 
     # ------------------------------------------------------------------
-    # 需要获取 ARIA 树的操作
     # ------------------------------------------------------------------
     print("Fetching ARIA tree...", file=sys.stderr)
     elements = client.get_aria_tree(wait=args.wait, force_refresh=force_refresh)
@@ -3111,13 +2969,11 @@ def main():
         print("Failed to get ARIA tree", file=sys.stderr)
         sys.exit(1)
 
-    # 保存到文件
     if args.output:
         with open(args.output, 'w', encoding='utf-8') as f:
             json.dump(elements, f, ensure_ascii=False, indent=2)
         print("ARIA tree saved to: {}".format(args.output), file=sys.stderr)
 
-    # --inputs: 只显示可输入元素
     if args.inputs:
         input_elements = client.find_input_elements(elements)
         if not input_elements:
@@ -3149,7 +3005,6 @@ def main():
         else:
             sys.exit(1)
 
-    # 处理查询
     results = elements
 
     if args.refId:

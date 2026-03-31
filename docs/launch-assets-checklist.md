@@ -22,7 +22,7 @@
 - [ ] Homepage set to `aivane.net`
 - [ ] Discussions enabled
 - [ ] Issues enabled
-- [x] First release notes drafted
+- [x] First release notes complete
 
 ## Website Assets
 

@@ -4,7 +4,7 @@ Thank you for helping shape the public `aivanelabs/ai-rpa` experience!
 
 ## What to contribute
 
-- Improvements to the Python `clients/python/aria_tree.py` REPL surface
+- Improvements to the Python `clients/python/aivane_repl.py` REPL surface
 - Enhancements and clarifications to the `docs/` quickstart, protocol, and smoke guidance
 - Example sequences located under `examples/`
 - Skills under `skills/`, particularly `android-repl`

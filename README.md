@@ -9,13 +9,14 @@ This repository represents the public-facing `aivane.net` launch for the `aivane
 1. Ensure your Android device has the AIVane REPL beta APK installed and is reachable over Wi‑Fi.
 2. Run the CLI:  
    ```bash
-   python clients/python/aria_tree.py --repl --url http://<device-ip>:8080
+   python clients/python/aivane_repl.py --repl --url http://<device-ip>:8080
    ```
 3. Inside the REPL, save the URL (`set url http://<device-ip>:8080`) and run the smoke path: `health`, `apps`, `la <package>`, `list`, `tap <refId>`, `input <refId>`, `back`, `press home`, `screenshot`.
 
 ## Public Assets
 
-- `clients/python/aria_tree.py`: REPL-first client that talks to `/api/execute`, `/health`, `/screenshot`, `/api/apps`.
+- `clients/python/aivane_repl.py`: preferred public-facing REPL entrypoint for Android device control.
+- `clients/python/aria_tree.py`: compatibility client that currently powers the same flow while older references are updated.
 - `docs/`: quickstart, protocol, permissions, known limitations, feedback, release notes, and repo scope.
 - `examples/`: smoke flows and minimal usage examples.
 - `skills/android-repl/`: sample skill definition with prompts and agent metadata.

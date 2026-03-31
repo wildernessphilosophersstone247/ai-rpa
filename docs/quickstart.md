@@ -13,7 +13,7 @@ This quickstart introduces the publicly staged CLI for AIVane (AI Mobile Automat
 Run the CLI with an explicit URL:
 
 ```bash
-python clients/python/aria_tree.py --repl --url http://<device-ip>:8080
+python clients/python/aivane_repl.py --repl --url http://<device-ip>:8080
 ```
 
 Inside the REPL, save the URL for later:
@@ -33,27 +33,27 @@ curl http://<device-ip>:8080/health
 2. List launchable apps:
 
 ```bash
-python clients/python/aria_tree.py --apps --url http://<device-ip>:8080
+python clients/python/aivane_repl.py --apps --url http://<device-ip>:8080
 ```
 
 3. Launch an app:
 
 ```bash
-python clients/python/aria_tree.py --launch <package> --url http://<device-ip>:8080
+python clients/python/aivane_repl.py --launch <package> --url http://<device-ip>:8080
 ```
 
 4. Inspect the current screen:
 
 ```bash
-python clients/python/aria_tree.py --list --url http://<device-ip>:8080
+python clients/python/aivane_repl.py --list --url http://<device-ip>:8080
 ```
 
 5. Interact:
 
 ```bash
-python clients/python/aria_tree.py --tap <refId> --url http://<device-ip>:8080
-python clients/python/aria_tree.py --input <refId> "hello" --url http://<device-ip>:8080
-python clients/python/aria_tree.py --back --url http://<device-ip>:8080
+python clients/python/aivane_repl.py --tap <refId> --url http://<device-ip>:8080
+python clients/python/aivane_repl.py --input <refId> "hello" --url http://<device-ip>:8080
+python clients/python/aivane_repl.py --back --url http://<device-ip>:8080
 ```
 
 ## Notes

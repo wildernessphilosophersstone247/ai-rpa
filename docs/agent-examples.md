@@ -1,12 +1,12 @@
 # Agent Examples — Android REPL Beta
 
-These prompt snippets show how Codex, Claude Code, or OpenClaw can call the AIVane Android REPL via the `aria_tree.py` client.
+These prompt snippets show how Codex, Claude Code, or OpenClaw can call the AIVane Android REPL via the public `aivane_repl.py` entrypoint.
 
 ## Codex (plain CLI)
 
 ```
-Use the AIVane Android REPL client at `clients/python/aria_tree.py`.
-1. Run `python aria_tree.py --repl --url http://<device-ip>:8080`.
+Use the AIVane Android REPL client at `clients/python/aivane_repl.py`.
+1. Run `python aivane_repl.py --repl --url http://<device-ip>:8080`.
 2. Save the URL (`set url http://<device-ip>:8080`).
 3. Use `apps`, `la com.xingin.xhs`, `list`, `tap 127`, `input 3 "hello"`, `back`, `press home`.
 4. Request `screenshot` if MediaProjection permission is granted.
@@ -30,7 +30,7 @@ Steps:
 ## OpenClaw (tool-invocation)
 
 ```
-Tool: aria_tree_client
+Tool: aivane_repl
 Inputs:
   - command: ["--launch", "com.xingin.xhs"]
   - command: ["--list"]

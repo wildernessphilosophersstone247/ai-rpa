@@ -25,6 +25,6 @@ What actually happened?
 
 ### Environment
 
-- `aria_tree.py --version` (if available):
+- `aivane_repl.py --version` (if available):
 - Device IP / model:
 - ADB/CLI environment (OS, Python 3.x):

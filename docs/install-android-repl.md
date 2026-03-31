@@ -33,7 +33,7 @@ The helper enables accessibility, starts the app, and tries to bring up the API 
 ## 4. Run the first smoke
 
 1. Open the REPL client:  
-   `python clients/python/aria_tree.py --repl --url http://<device-ip>:8080`
+   `python clients/python/aivane_repl.py --repl --url http://<device-ip>:8080`
 2. Inside the REPL save the URL (`set url ...`) and run: `health`, `apps`, `la <package>`, `list`, `tap <refId>`, `input <refId>`, `back`, `press home`.
 3. If you granted screenshot permission, run `screenshot` to confirm capture.
 

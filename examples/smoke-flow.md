@@ -7,19 +7,19 @@ Use this flow to verify a fresh Android REPL beta installation.
 3. Run:
 
 ```bash
-python clients/python/aria_tree.py --apps --url http://<device-ip>:8080
+python clients/python/aivane_repl.py --apps --url http://<device-ip>:8080
 ```
 
 4. Launch a known app:
 
 ```bash
-python clients/python/aria_tree.py --launch <package> --url http://<device-ip>:8080
+python clients/python/aivane_repl.py --launch <package> --url http://<device-ip>:8080
 ```
 
 5. List the screen:
 
 ```bash
-python clients/python/aria_tree.py --list --url http://<device-ip>:8080
+python clients/python/aivane_repl.py --list --url http://<device-ip>:8080
 ```
 
 6. Tap or input.
