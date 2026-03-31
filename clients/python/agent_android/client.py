@@ -12,6 +12,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from .snapshot import find_snapshot_element, load_snapshot, save_snapshot
 from .transport import _build_http_opener
 
 class AgentAndroidClient:
@@ -27,6 +28,7 @@ class AgentAndroidClient:
         self._local_tree: Optional[List[Dict]] = None  # In-process UI tree cache
         self._ui_tree_xml_cache: Optional[str] = None
         self._package_name_cache: Optional[str] = None
+        self._snapshot: Optional[Dict[str, Any]] = None
 
     # ---------------------------------------------------------------------------
     # ---------------------------------------------------------------------------
@@ -139,6 +141,70 @@ class AgentAndroidClient:
         outputs = result.get('data', {}).get('outputs', {})
         return outputs if isinstance(outputs, dict) else {}
 
+    def _element_identity(self, elem: Dict[str, Any]) -> Tuple[Any, ...]:
+        return (
+            elem.get("resourceId"),
+            elem.get("text"),
+            elem.get("contentDesc"),
+            elem.get("simpleClassName"),
+            elem.get("xpath"),
+        )
+
+    def _find_in_elements(self, elements: List[Dict[str, Any]], refId: int) -> Optional[Dict[str, Any]]:
+        for elem in elements:
+            if elem.get("refId") == refId:
+                return elem
+        return None
+
+    def _find_matching_snapshot_identity(
+        self,
+        snapshot_elem: Dict[str, Any],
+        elements: List[Dict[str, Any]],
+    ) -> Optional[Dict[str, Any]]:
+        wanted = self._element_identity(snapshot_elem)
+        if not any(part for part in wanted):
+            return None
+        for elem in elements:
+            if self._element_identity(elem) == wanted:
+                return elem
+        return None
+
+    def _resolve_action_target(self, refId: int) -> Optional[Dict[str, Any]]:
+        if self._local_tree:
+            target = self._find_in_elements(self._local_tree, refId)
+            if target is not None:
+                return target
+
+        snapshot = self._snapshot or load_snapshot(self.base_url)
+        if snapshot:
+            self._snapshot = snapshot
+            snapshot_elem = find_snapshot_element(snapshot, refId)
+            if snapshot_elem is not None:
+                current_package = self.get_current_package_name()
+                snapshot_package = snapshot.get("packageName")
+                if (
+                    current_package
+                    and isinstance(snapshot_package, str)
+                    and snapshot_package
+                    and current_package != snapshot_package
+                ):
+                    print(
+                        "RefId snapshot no longer matches the current screen: "
+                        f"snapshot package={snapshot_package}, current package={current_package}. "
+                        "Run --list again before tap/input.",
+                        file=sys.stderr,
+                    )
+                    return None
+
+                current_tree = self.get_ui_elements(force_refresh=True)
+                if current_tree:
+                    matched = self._find_matching_snapshot_identity(snapshot_elem, current_tree)
+                    if matched is not None:
+                        return matched
+                return snapshot_elem
+
+        return self._find_element_by_refId(refId, force_refresh=True)
+
     def _run_single_operation(self, template_id: str, operation_type: str,
                               parameters: Optional[Dict[str, Any]],
                               success_message: str,
@@ -161,6 +227,13 @@ class AgentAndroidClient:
         x, y = elem.get('x'), elem.get('y')
         if x is None or y is None:
             print(f"{label} has no coordinates")
+            return None
+        if isinstance(x, (int, float)) and isinstance(y, (int, float)) and (x < 0 or y < 0):
+            print(
+                f"{label} resolved to off-screen coordinates ({x}, {y}). "
+                "Run --list again to refresh the snapshot before tap/input.",
+                file=sys.stderr,
+            )
             return None
         return x, y
 
@@ -321,6 +394,16 @@ class AgentAndroidClient:
         elements = self._fetch_ui_elements_impl()
         if elements is not None:
             self._local_tree = elements
+            package_name = self.get_current_package_name()
+            try:
+                save_snapshot(self.base_url, package_name, elements)
+                self._snapshot = {
+                    "baseUrl": self.base_url,
+                    "packageName": package_name,
+                    "elements": elements,
+                }
+            except OSError:
+                pass
         return elements
 
     def _fetch_ui_elements_impl(self) -> Optional[List[Dict]]:
@@ -392,7 +475,7 @@ class AgentAndroidClient:
 
     def tap_element(self, refId: int) -> bool:
         """Tap the element for the given refId using the cached tree when available."""
-        target = self._find_element_by_refId(refId)
+        target = self._resolve_action_target(refId)
         if not target:
             return False
 
@@ -414,7 +497,7 @@ class AgentAndroidClient:
 
     def input_to_element(self, refId: int, text: str, clearFirst: bool = True) -> bool:
         """Input text into the given refId using the cached tree when available."""
-        target = self._find_element_by_refId(refId)
+        target = self._resolve_action_target(refId)
         if not target:
             return False
 
