@@ -12,6 +12,11 @@ The first public surface is **AIVane Android REPL Beta**: a lightweight Python C
 - GitHub is the only official entry point for the beta.
 - APK builds are distributed through [GitHub Releases](https://github.com/aivanelabs/ai-rpa/releases).
 
+## Get the Beta
+
+- [Download APK (v0.1.0-beta.1)](https://github.com/aivanelabs/ai-rpa/releases/download/v0.1.0-beta.1/aivane.apk)
+- [View all releases](https://github.com/aivanelabs/ai-rpa/releases)
+
 ## Who This Is For
 
 - AI agent users working with Codex, Claude Code, OpenClaw, or similar tools

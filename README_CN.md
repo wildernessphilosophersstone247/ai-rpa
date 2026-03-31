@@ -10,6 +10,11 @@
 - GitHub 是当前 beta 的唯一正式入口。
 - APK 通过 [GitHub Releases](https://github.com/aivanelabs/ai-rpa/releases) 分发。
 
+## 获取 Beta
+
+- [下载 APK（v0.1.0-beta.1）](https://github.com/aivanelabs/ai-rpa/releases/download/v0.1.0-beta.1/aivane.apk)
+- [查看所有 Releases](https://github.com/aivanelabs/ai-rpa/releases)
+
 ## 适合谁
 
 - 使用 Codex、Claude Code、OpenClaw 等工具的 AI agent 用户
