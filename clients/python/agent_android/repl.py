@@ -1,0 +1,880 @@
+from __future__ import annotations
+
+import os
+import shlex
+import sys
+import traceback
+from typing import Any, Dict, List, Optional
+
+from .client import AgentAndroidClient
+from .config import CONFIG_FILE_PATH, save_url_to_config
+from .formatting import _format_launcher_app, format_element, print_tree
+
+try:
+    import readline
+    _HAS_READLINE = True
+except ImportError:
+    _HAS_READLINE = False
+
+_REPL_EXIT = object()
+
+class AriaReplSession:
+    """
+    agent-android REPL session.
+
+    Command syntax: verb [+ modifiers/arguments]
+    Examples:
+      l                    -> list elements (reuse cache)
+      ss                   -> refresh the tree and list again
+      t 5                  -> tap refId=5
+      i 5 hello            -> input text into refId=5
+      s                    -> capture a screenshot with an auto-generated name
+      s my.png             -> capture a screenshot to a specific path
+      sw d                 -> swipe down (down/up/left/right)
+      sw d --dur 500 --dist 0.7  -> swipe down for 500ms at distance 0.7
+      wf Search            -> wait for a "Search" element (default 30s)
+      wf Search --t 60     -> wait up to 60s
+      g 5 text             -> get the text attribute for refId=5
+      p home               -> press the Home key
+      b                    -> navigate back
+      la com.xingin.xhs    -> launch an app
+      f Search             -> filter elements containing "Search"
+      id com.example:id/btn -> filter by resourceId
+      ref 5                -> show refId=5 details
+      x 5                  -> show XPath candidates for refId=5
+      raw                  -> toggle raw JSON output
+      vars                 -> show session variables
+      set url http://...   -> set the server URL
+      set timeout 30       -> set the default wait timeout
+      h                    -> show help
+      q                    -> quit
+    """
+
+    COMMANDS = [
+        ('l', 'list',          'List elements (reuse cache)'),
+        ('ss', 'snapshot',     'Refresh the tree and list again'),
+        ('f', 'find',          'Filter by text'),
+        ('id', None,           'Filter by resourceId'),
+        ('ref', None,          'Show element details'),
+        ('x', 'xpath',         'Show XPath candidates and match counts'),
+        ('xx', None,           'Tap via the best unique auto-generated XPath'),
+        ('vx', 'validatex',    'Validate an XPath at runtime'),
+        ('t', 'tap',           'Tap an element by refId'),
+        ('tx', 'tapx',         'Tap an element by XPath'),
+        ('i', 'input',         'Input text (refId text)'),
+        ('ix', 'inputx',       'Input text by XPath'),
+        ('sw', 'swipe',        'Swipe (d/u/l/r)'),
+        ('p', 'press',         'Press a key (back/home/menu)'),
+        ('b', 'back',          'Press Back'),
+        ('wf', 'waitfor',      'Wait for an element to appear'),
+        ('g', 'get',           'Read an element attribute'),
+        ('s', 'screenshot',    'Capture a screenshot'),
+        ('la', 'launch',       'Launch an app'),
+        ('raw', None,          'Toggle raw JSON output'),
+        ('vars', None,         'Show session variables'),
+        ('apps', None,         'List launcher apps'),
+        ('set', None,          'Set variables (url/timeout)'),
+        ('h', 'help',          'Show help'),
+        ('q', 'quit',          'Quit'),
+    ]
+
+    def __init__(self, url: str, history_file: str = None):
+        self.client = AgentAndroidClient(url)
+        self._tree: Optional[List[Dict]] = None   # Currently cached tree
+        self._raw_output: bool = False            # Raw JSON output toggle
+        self._timeout: int = 30                  # Default wait timeout in seconds
+        self._prompt: str = "aria> "
+        self.variables: Dict[str, Any] = {}      # Session variables (LAST_XPATH, etc.)
+
+        if _HAS_READLINE and history_file:
+            try:
+                readline.read_history_file(history_file)
+            except FileNotFoundError:
+                pass
+            self._history_file = history_file
+
+        self._aliases: Dict[str, str] = {}
+        for short, full, _ in self.COMMANDS:
+            if short:
+                self._aliases[short] = full or short
+            if full:
+                self._aliases[full] = full
+
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+
+    def run(self):
+        self._print_banner()
+        while True:
+            try:
+                line = self._readline()
+                if line is None:  # EOF / Ctrl+D
+                    break
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+
+                result = self._execute_line(line)
+                if result is _REPL_EXIT:
+                    break
+
+            except KeyboardInterrupt:
+                print()  # New line after Ctrl+C
+                print("  (Ctrl+C: type q to quit)", file=sys.stderr)
+                continue
+            except EOFError:
+                break
+            except Exception:
+                print(f"  [!] Error: {traceback.format_exc(limit=3)}", file=sys.stderr)
+
+        self._save_history()
+        print("Goodbye!")
+
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+
+    def _parse_line(self, line: str) -> Tuple[str, List[str]]:
+        """
+        Parse a single REPL command line.
+
+        Returns (command_name, [arg1, arg2, ...]).
+        Supports:
+          - whitespace-separated tokens
+          - double-quoted or single-quoted strings
+          - --flag value style parameters
+        """
+        stripped = line.strip()
+        if not stripped:
+            return '', []
+
+        first, _, remainder = stripped.partition(' ')
+        cmd = first
+        remainder = remainder.strip()
+
+        if cmd in ('vx', 'validatex', 'tx', 'tapx'):
+            return cmd, [remainder] if remainder else []
+
+        if cmd in ('ix', 'inputx'):
+            if not remainder:
+                return cmd, []
+            if ' -- ' in remainder:
+                xpath, text = remainder.split(' -- ', 1)
+                xpath = xpath.strip()
+                text = text.strip()
+                return cmd, [xpath, text] if xpath and text else [xpath] if xpath else []
+            xpath, sep, text = remainder.rpartition(' ')
+            if sep:
+                xpath = xpath.strip()
+                text = text.strip()
+                return cmd, [xpath, text] if xpath and text else [remainder]
+            return cmd, [remainder]
+
+        tokens = shlex.split(line, posix=False)
+        if not tokens:
+            return '', []
+        cmd = tokens[0]
+        args = tokens[1:]
+
+        return cmd, args
+
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+
+    def _execute_line(self, line: str) -> Any:
+        cmd, args = self._parse_line(line)
+
+        resolved = self._aliases.get(cmd, cmd)
+        handler_name = f"_cmd_{resolved}"
+        handler = getattr(self, handler_name, None)
+        if handler is None:
+            self._print_error(f"Unknown command: {cmd!r}.  Type 'h' for help.")
+            return False
+
+        try:
+            return handler(args)
+        except TypeError as e:
+            self._print_error(f"Usage: {e}")
+            return False
+
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+
+    def _readline(self) -> Optional[str]:
+        if _HAS_READLINE:
+            return input(self._prompt)
+        else:
+            return input(self._prompt)
+
+    def _add_history(self, line: str):
+        if _HAS_READLINE:
+            try:
+                readline.add_history(line)
+            except Exception:
+                pass
+
+    def _save_history(self):
+        if _HAS_READLINE and hasattr(self, '_history_file'):
+            try:
+                readline.write_history_file(self._history_file)
+            except Exception:
+                pass
+
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+
+    def _ensure_tree(self, force=False) -> Optional[List[Dict]]:
+        """Ensure a cached tree exists, refreshing it when needed."""
+        if force or self._tree is None:
+            self._tree = self.client.get_ui_elements(force_refresh=True)
+        return self._tree
+
+    def _invalidate_tree(self):
+        """Invalidate the cached tree after a UI action."""
+        self._tree = None
+        self.client._local_tree = None
+
+    def _current_package_label(self) -> str:
+        pkg = self.client.get_current_package_name()
+        return pkg or "unknown"
+
+    def _print_tree(self, elements: List[Dict], title: str = None):
+        """Pretty-print a list of elements."""
+        print()
+        n = len(elements)
+        title = title or f"ARIA Tree - {n} elements"
+        print(f"  ╭{'─' * 66}╮")
+        print(f"  │ {title:<64} │")
+        print(f"  ╰{'─' * 66}╯")
+        print(f"  Current package: {self._current_package_label()}")
+        for e in elements:
+            rid = e.get('refId', '?')
+            text = str(e.get('text', '') or e.get('contentDesc', '') or '-')
+            cls = e.get('simpleClassName', '')
+            x, y = e.get('x', '?'), e.get('y', '?')
+            flags = []
+            if e.get('clickable'): flags.append('click')
+            if e.get('focusable'): flags.append('focus')
+            flag = f"[{','.join(flags)}]" if flags else ""
+            text_disp = text[:22] + '...' if len(text) > 22 else text
+            print(f"  [{rid:>2}] {text_disp:<24} {cls:<16} ({str(x):>4},{str(y):>4}) {flag}")
+        print()
+
+    def _runtime_validate_candidates(
+        self, candidates: List[Tuple[str, int, str]]
+    ) -> List[Tuple[str, int, str, Optional[Dict[str, Any]]]]:
+        """Validate XPath candidates with the Android runtime evaluator."""
+        validated: List[Tuple[str, int, str, Optional[Dict[str, Any]]]] = []
+        strategy_order = {
+            'text': 0,
+            'contentDescription': 1,
+            'ancestor-relative': 2,
+            'className+position': 3,
+            'className+resourceId': 4,
+            'className+text+resourceId': 5,
+            'className+text+contentDescription': 6,
+            'text+clickable': 7,
+            'className-only': 99,
+        }
+
+        for xp, _, strategy in candidates:
+            info = self.client.validate_xpath_runtime(xp)
+            count = info.get('count', -1) if info else -1
+            validated.append((xp, count, strategy, info))
+
+        validated.sort(key=lambda c: (
+            0 if c[1] == 1 else 1,
+            0 if c[1] >= 0 else 2,
+            strategy_order.get(c[2], 99),
+            c[1] if c[1] >= 0 else 999999,
+        ))
+        return validated
+
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+
+    def _cmd_list(self, args: List[str]) -> bool:
+        """l [n] - list the first n elements, or all elements by default."""
+        limit = None
+        if args and args[0].isdigit():
+            limit = int(args[0])
+        tree = self._ensure_tree()
+        if not tree:
+            self._print_error(f"Failed to get ARIA tree (package={self._current_package_label()})")
+            return False
+        elems = tree[:limit] if limit else tree
+        self._print_tree(elems)
+        return True
+
+    def _cmd_snapshot(self, args: List[str]) -> bool:
+        """ss - force-refresh the tree and print it."""
+        tree = self._ensure_tree(force=True)
+        if not tree:
+            self._print_error(f"Failed to get ARIA tree (package={self._current_package_label()})")
+            return False
+        self._print_tree(tree, f"ARIA Tree (refreshed) - {len(tree)} elements")
+        return True
+
+    def _cmd_l(self, args: List[str]) -> bool:
+        return self._cmd_list(args)
+
+    def _cmd_ss(self, args: List[str]) -> bool:
+        return self._cmd_snapshot(args)
+
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+
+    def _cmd_find(self, args: List[str]) -> bool:
+        """f [text] - filter elements by text."""
+        if not args:
+            self._print_error("Usage: f <text>")
+            return False
+        text = ' '.join(args)
+        tree = self._ensure_tree()
+        if not tree:
+            return False
+        results = self.client.find_by_text(tree, text)
+        if not results:
+            print(f"  [!] No elements matching: {text!r}")
+            return False
+        self._print_tree(results, f"Find: '{text}' ({len(results)} matches)")
+        return True
+
+    def _cmd_f(self, args: List[str]) -> bool:
+        return self._cmd_find(args)
+
+    def _cmd_id(self, args: List[str]) -> bool:
+        """id <resourceId> - filter elements by resourceId."""
+        if not args:
+            self._print_error("Usage: id <resourceId>")
+            return False
+        rid = ' '.join(args)
+        tree = self._ensure_tree()
+        if not tree:
+            return False
+        results = self.client.find_by_resourceId(tree, rid)
+        if not results:
+            print(f"  [!] No elements with resourceId: {rid!r}")
+            return False
+        self._print_tree(results, f"resourceId: {rid!r} ({len(results)} matches)")
+        return True
+
+    def _cmd_ref(self, args: List[str]) -> bool:
+        """ref <N> - show details for refId=N."""
+        if not args or not args[0].isdigit():
+            self._print_error("Usage: ref <refId>")
+            return False
+        refId = int(args[0])
+        tree = self._ensure_tree()
+        if not tree:
+            return False
+        elem = self.client.find_by_refId(tree, refId)
+        if not elem:
+            print(f"  [!] Element refId={refId} not found ({len(tree)} elements in tree)")
+            return False
+        print(format_element(elem))
+        return True
+
+    def _cmd_xpath(self, args: List[str]) -> bool:
+        """x <N> [idx] - show XPath candidates validated by Android runtime match counts."""
+        if not args or not args[0].isdigit():
+            self._print_error("Usage: x <refId> [candidate-index]")
+            return False
+        refId = int(args[0])
+        tree = self._ensure_tree()
+        if not tree:
+            return False
+        elem = self.client.find_by_refId(tree, refId)
+        if not elem:
+            print(f"  [!] Element refId={refId} not found")
+            return False
+
+        raw_candidates = self.client.generate_xpath_candidates(elem, tree)
+        if not raw_candidates:
+            print(f"  [!] No XPath candidates generated")
+            return False
+        candidates = self._runtime_validate_candidates(raw_candidates)
+        ui_tree_absolute = self.client.build_ui_tree_absolute_xpath(tree, elem)
+        runtime_absolute = self.client.build_runtime_absolute_xpath(tree, elem)
+        runtime_absolute_info = self.client.validate_xpath_runtime(runtime_absolute) if runtime_absolute else None
+
+        print()
+        print(f"  refId={refId}  text='{elem.get('text', '')[:30]}'  "
+              f"class={elem.get('simpleClassName', '')}")
+        if ui_tree_absolute:
+            print(f"  UI tree absolute path: {ui_tree_absolute}")
+        if runtime_absolute:
+            runtime_count = runtime_absolute_info.get('count') if runtime_absolute_info else '?'
+            print(f"  Runtime absolute path: {runtime_absolute}  (match={runtime_count})")
+        print(f"  {'─' * 60}")
+        print(f"  {'Idx':<4} {'Runtime':<10} {'XPath'}")
+        print(f"  {'─' * 60}")
+
+        for i, (xp, count, strategy, info) in enumerate(candidates):
+            badge = ''
+            if count < 0:
+                badge = ' ? error'
+            elif count == 1:
+                badge = ' OK unique'
+            elif count <= 3:
+                badge = f' ! {count} matches'
+            else:
+                badge = f' X {count} matches'
+            xp_display = xp if len(xp) <= 55 else xp[:52] + '...'
+            print(f"  [{i}] {badge:<8} {xp_display}  ({strategy})")
+            if info and count == 1:
+                summary = info.get('text') or info.get('contentDescription') or '-'
+                print(f"      -> {info.get('className') or '-'} | {summary!r}")
+
+        print(f"  {'─' * 60}")
+        best = candidates[0]
+        if best[1] == 1:
+            print(f"  Recommended: {best[0]}")
+            print(f"    strategy={best[2]}, runtime matched exactly 1 element")
+        elif best[1] < 0:
+            print(f"  Warning: best candidate validation failed; try 'vx <xpath>' first")
+            print(f"     recommended: {best[0]}")
+        else:
+            print(f"  Warning: best candidate matched {best[1]} elements at runtime and may not be unique")
+            print(f"     recommended: {best[0]}")
+
+        if len(args) >= 2 and args[1].isdigit():
+            idx = int(args[1])
+            if 0 <= idx < len(candidates):
+                chosen = candidates[idx]
+                print(f"\n  Using [{idx}] {chosen[0]}")
+                print(f"  Strategy: {chosen[2]}, runtime matched {chosen[1]} elements")
+                if chosen[1] > 1:
+                    print(f"  [!] Warning: this XPath matches {chosen[1]} elements at runtime, so tapping may be imprecise")
+                self.variables['LAST_XPATH'] = chosen[0]
+                self.variables['LAST_XPATH_COUNT'] = chosen[1]
+                self.variables['LAST_XPATH_STRATEGY'] = chosen[2]
+                self.variables['LAST_XPATH_RUNTIME'] = chosen[3]
+            else:
+                print(f"  [!] Candidate index {idx} is out of range (0-{len(candidates)-1})")
+        else:
+            self.variables['LAST_XPATH'] = best[0]
+            self.variables['LAST_XPATH_COUNT'] = best[1]
+            self.variables['LAST_XPATH_STRATEGY'] = best[2]
+            self.variables['LAST_XPATH_RUNTIME'] = best[3]
+        self.variables['LAST_UI_TREE_ABSOLUTE_XPATH'] = ui_tree_absolute
+        self.variables['LAST_RUNTIME_ABSOLUTE_XPATH'] = runtime_absolute
+        self.variables['LAST_RUNTIME_ABSOLUTE_INFO'] = runtime_absolute_info
+        return True
+
+    def _cmd_x(self, args: List[str]) -> bool:
+        return self._cmd_xpath(args)
+
+    def _cmd_xx(self, args: List[str]) -> bool:
+        """xx <N> - tap via an auto-generated unique XPath when possible."""
+        if not args or not args[0].isdigit():
+            self._print_error("Usage: xx <refId>")
+            return False
+        refId = int(args[0])
+        tree = self._ensure_tree()
+        if not tree:
+            return False
+        elem = self.client.find_by_refId(tree, refId)
+        if not elem:
+            print(f"  [!] Element refId={refId} not found")
+            return False
+
+        raw_candidates = self.client.generate_xpath_candidates(elem, tree)
+        if not raw_candidates:
+            print(f"  [!] No XPath candidates generated")
+            return False
+        candidates = self._runtime_validate_candidates(raw_candidates)
+
+        unique: Optional[Tuple[str, int, str, Optional[Dict[str, Any]]]] = None
+        for xp, count, strategy, info in candidates:
+            if count == 1:
+                unique = (xp, count, strategy, info)
+                break
+
+        if unique:
+            xp, count, strategy, _ = unique
+            print(f"  Success: refId={refId} -> XPath (unique match): {xp}")
+            print(f"    strategy: {strategy}")
+        else:
+            xp, count, strategy, _ = candidates[0]
+            print(f"  [!] refId={refId}: no uniquely matching XPath was found")
+            print(f"  Warning: best candidate: {xp}")
+            print(f"     strategy: {strategy}, runtime matched {count} elements")
+            print(f"  Tap refused - the XPath is not unique enough and may hit the wrong element")
+            print(f"  ")
+            print(f"  Tip: use 'x {refId}' to inspect all candidates, or 'x {refId} <index>' to choose a non-unique XPath")
+            return False
+
+        ok = self.client.tap_by_xpath(xp)
+        if ok:
+            self._invalidate_tree()
+        return ok
+
+    def _cmd_xx_alias(self, args: List[str]) -> bool:
+        """tapx-auto <refId> - alias for xx."""
+        return self._cmd_xx(args)
+
+    def _cmd_validatex(self, args: List[str]) -> bool:
+        """vx <xpath> - validate an XPath at runtime."""
+        if not args:
+            self._print_error("Usage: vx <xpath>")
+            return False
+        xpath = ' '.join(args)
+        info = self.client.validate_xpath_runtime(xpath)
+        if not info:
+            print(f"  [!] Runtime validation failed: {xpath}")
+            return False
+
+        print(f"  XPath: {xpath}")
+        print(f"  Runtime match count: {info.get('count')}")
+        if info.get('count') == 1:
+            print(f"  Class: {info.get('className') or '-'}")
+            print(f"  Text:  {info.get('text') or '-'}")
+            print(f"  Desc:  {info.get('contentDescription') or '-'}")
+            print(f"  Bounds:{info.get('bounds') or '-'}")
+        return True
+
+    def _cmd_vx(self, args: List[str]) -> bool:
+        return self._cmd_validatex(args)
+
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+
+    def _cmd_tap(self, args: List[str]) -> bool:
+        """t <refId> - tap an element."""
+        if not args or not args[0].isdigit():
+            self._print_error("Usage: t <refId>")
+            return False
+        refId = int(args[0])
+        ok = self.client.tap_element(refId)
+        if ok:
+            self._invalidate_tree()
+        return ok
+
+    def _cmd_t(self, args: List[str]) -> bool:
+        return self._cmd_tap(args)
+
+    def _cmd_input(self, args: List[str]) -> bool:
+        """i <refId> <text> - input text into an element."""
+        if len(args) < 2 or not args[0].isdigit():
+            self._print_error("Usage: i <refId> <text>")
+            return False
+        refId = int(args[0])
+        text = ' '.join(args[1:])
+        ok = self.client.input_to_element(refId, text)
+        if ok:
+            self._invalidate_tree()
+        return ok
+
+    def _cmd_i(self, args: List[str]) -> bool:
+        return self._cmd_input(args)
+
+    def _cmd_tapx(self, args: List[str]) -> bool:
+        """tx <xpath> - tap an element by XPath."""
+        if not args:
+            self._print_error("Usage: tx <xpath>")
+            self._print_error("  Example: tx //EditText[@text='Search']")
+            self._print_error("  Example: tx //Button[@text='OK']")
+            self._print_error("  Example: tx //TextView[@contentDescription='Search'][clickable]")
+            return False
+        xpath = ' '.join(args)
+        ok = self.client.tap_by_xpath(xpath)
+        if ok:
+            self._invalidate_tree()
+        return ok
+
+    def _cmd_tx(self, args: List[str]) -> bool:
+        return self._cmd_tapx(args)
+
+    def _cmd_inputx(self, args: List[str]) -> bool:
+        """ix <xpath> <text> - input text into a field by XPath."""
+        if len(args) < 2:
+            self._print_error("Usage: ix <xpath> <text>")
+            self._print_error("  Example: ix //EditText[@text='Search'] hello")
+            return False
+        xpath = args[0]
+        text = ' '.join(args[1:])
+        ok = self.client.input_by_xpath(xpath, text)
+        if ok:
+            self._invalidate_tree()
+        return ok
+
+    def _cmd_ix(self, args: List[str]) -> bool:
+        return self._cmd_inputx(args)
+
+    def _cmd_swipe(self, args: List[str]) -> bool:
+        """sw <d|u|l|r> [--dur N] [--dist N] - swipe."""
+        if not args or args[0] not in ('d', 'u', 'l', 'r',
+                                          'down', 'up', 'left', 'right'):
+            self._print_error("Usage: sw <d|u|l|r> [--dur N] [--dist N]")
+            return False
+        direction_map = {'d': 'down', 'u': 'up', 'l': 'left', 'r': 'right'}
+        direction = direction_map.get(args[0], args[0])
+
+        duration = 300
+        distance = 0.5
+        i = 1
+        while i < len(args):
+            if args[i] == '--dur' and i + 1 < len(args):
+                duration = int(args[i + 1]); i += 2
+            elif args[i] == '--dist' and i + 1 < len(args):
+                distance = float(args[i + 1]); i += 2
+            else:
+                i += 1
+
+        ok = self.client.swipe(direction, duration, distance)
+        if ok:
+            self._invalidate_tree()
+        return ok
+
+    def _cmd_sw(self, args: List[str]) -> bool:
+        return self._cmd_swipe(args)
+
+    def _cmd_press(self, args: List[str]) -> bool:
+        """p <key> - press a key (back/home/menu)."""
+        if not args:
+            self._print_error("Usage: p <back|home|menu>")
+            return False
+        ok = self.client.press_key(args[0])
+        if ok:
+            self._invalidate_tree()
+        return ok
+
+    def _cmd_p(self, args: List[str]) -> bool:
+        return self._cmd_press(args)
+
+    def _cmd_back(self, args: List[str]) -> bool:
+        """b - press Back."""
+        ok = self.client.press_back()
+        if ok:
+            self._invalidate_tree()
+        return ok
+
+    def _cmd_b(self, args: List[str]) -> bool:
+        return self._cmd_back(args)
+
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+
+    def _cmd_waitfor(self, args: List[str]) -> bool:
+        """wf <text> [--t N] - wait for an element to appear."""
+        if not args or args[0].startswith('--'):
+            self._print_error("Usage: wf <text> [--t N]")
+            return False
+
+        text = args[0]
+        timeout = self._timeout
+        i = 1
+        while i < len(args):
+            if args[i] == '--t' and i + 1 < len(args):
+                timeout = int(args[i + 1]); i += 2
+            else:
+                i += 1
+
+        print(f"  Waiting for: {text!r} (timeout={timeout}s)...")
+        elem = self.client.wait_for_element(text=text, timeout=timeout)
+        if elem:
+            print(f"  ✓ Found refId={elem.get('refId')}: "
+                  f"text={elem.get('text', '')!r} "
+                  f"at ({elem.get('x')}, {elem.get('y')})")
+            self._invalidate_tree()
+            return True
+        else:
+            print(f"  ✗ Timeout after {timeout}s")
+            return False
+
+    def _cmd_wf(self, args: List[str]) -> bool:
+        return self._cmd_waitfor(args)
+
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+
+    def _cmd_get(self, args: List[str]) -> bool:
+        """g <refId> <attr> - read an element attribute."""
+        if len(args) < 2:
+            self._print_error("Usage: g <refId> <attr>  (attr: text/class/bounds/x/y/xpath/...)")
+            return False
+        refId = int(args[0])
+        attr = args[1]
+        value = self.client.get_attribute(refId, attr)
+        return value is not None
+
+    def _cmd_g(self, args: List[str]) -> bool:
+        return self._cmd_get(args)
+
+    def _cmd_screenshot(self, args: List[str]) -> bool:
+        """s [path] - capture a screenshot."""
+        path = args[0] if args else None
+        result = self.client.screenshot(output_path=path)
+        if result:
+            print(f"  ✓ {result}")
+            return True
+        return False
+
+    def _cmd_s(self, args: List[str]) -> bool:
+        return self._cmd_screenshot(args)
+
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+
+    def _cmd_launch(self, args: List[str]) -> bool:
+        """la <package> - launch an app."""
+        if not args:
+            self._print_error("Usage: la <package>")
+            return False
+        package = args[0]
+        ok = self.client.launch_app(package)
+        if ok:
+            self._invalidate_tree()
+        return ok
+
+    def _cmd_la(self, args: List[str]) -> bool:
+        return self._cmd_launch(args)
+
+    def _cmd_apps(self, args: List[str]) -> bool:
+        """apps - list launcher apps."""
+        apps = self.client.list_launcher_apps()
+        if apps is None:
+            self._print_error("Failed to fetch launcher apps.")
+            return False
+        if not apps:
+            print("  No launcher apps returned.")
+            return True
+        print("Launcher apps:")
+        for index, app in enumerate(apps, start=1):
+            print(f"  [{index:02d}] {_format_launcher_app(app)}")
+        return True
+
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+
+    def _cmd_raw(self, args: List[str]) -> bool:
+        """raw - toggle raw JSON output."""
+        self._raw_output = not self._raw_output
+        print(f"  Raw JSON output: {'ON' if self._raw_output else 'OFF'}")
+        return True
+
+    def _cmd_vars(self, args: List[str]) -> bool:
+        """vars - show session variables."""
+        print("  Session:")
+        print(f"    URL:      {self.client.base_url}")
+        print(f"    Timeout:  {self._timeout}s")
+        print(f"    RawJSON:  {'ON' if self._raw_output else 'OFF'}")
+        print(f"    Cached:   {'YES' if self._tree is not None else 'NO'}")
+        if self._tree:
+            print(f"    Elements: {len(self._tree)}")
+        return True
+
+    def _cmd_set(self, args: List[str]) -> bool:
+        """set <url|timeout> <value> - set a session variable."""
+        if len(args) < 2:
+            self._print_error("Usage: set <url|timeout> <value>")
+            return False
+        key, value = args[0], ' '.join(args[1:])
+        if key == 'url':
+            trimmed_value = value.strip()
+            if not trimmed_value:
+                self._print_error("URL cannot be empty")
+                return False
+            self.client = AgentAndroidClient(trimmed_value)
+            print(f"  URL set to: {trimmed_value}")
+            try:
+                save_url_to_config(trimmed_value)
+                print(f"  Persisted to {CONFIG_FILE_PATH}")
+            except OSError as exc:
+                print(f"  Warning: could not save URL to {CONFIG_FILE_PATH}: {exc}", file=sys.stderr)
+        elif key == 'timeout':
+            self._timeout = int(value)
+            print(f"  Timeout set to: {self._timeout}s")
+        else:
+            self._print_error(f"Unknown variable: {key!r}.  Available: url, timeout")
+            return False
+        return True
+
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+
+    def _cmd_help(self, args: List[str]) -> bool:
+        """h - show help."""
+        self._print_help()
+        return True
+
+    def _cmd_h(self, args: List[str]) -> bool:
+        return self._cmd_help(args)
+
+    def _cmd_quit(self, args: List[str]) -> Any:
+        """q - quit."""
+        return _REPL_EXIT
+
+    def _cmd_q(self, args: List[str]) -> Any:
+        return self._cmd_quit(args)
+
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+
+    def _print_help(self):
+        lines = [
+            "",
+            "  agent-android REPL v5.4 - Command Reference",
+            "  ─" + "─" * 66,
+            "",
+            "  Browse",
+            "    l [n]             List elements (show the first n entries, reuse cache)",
+            "    ss                Refresh the tree and list again (force refresh)",
+            "    f <text>          Filter elements by text",
+            "    id <resourceId>   Filter by resourceId",
+            "    ref <N>           Show detailed information for refId=N",
+            "    x <N> [idx]       Show XPath candidates for refId=N (validated by runtime match count)",
+            "                       Use 'x <N> <idx>' to select a specific candidate and store it as LAST_XPATH",
+            "    xx <N>            Tap via a unique XPath candidate automatically (refuses non-unique candidates)",
+            "    vx <xpath>        Validate the runtime match count for an XPath",
+            "",
+            "  Interact",
+            "    t <N>             Tap the element with refId=N",
+            "    tx <xpath>        Tap an element by XPath",
+            "                       Example: tx //Button[@text='Search']",
+            "                       Example: tx //EditText[@text='Search']",
+            "    i <N> <text>      Input text into refId=N",
+            "    ix <xpath> <text> Input text by XPath",
+            "                       Example: ix //EditText[@text='Search'] hello",
+            "    sw <d|u|l|r> [--dur N] [--dist N]",
+            "                       Swipe (d=down, u=up, l=left, r=right)",
+            "    p <key>           Press a key (back/home/menu)",
+            "    b                  Press Back",
+            "",
+            "  Wait",
+            "    wf <text> [--t N]  Wait for an element to appear (default timeout: 30s)",
+            "",
+            "  Info",
+            "    g <N> <attr>     Read an attribute from refId=N",
+            "                       (text/class/bounds/x/y/xpath/selector/...)",
+            "    s [path]          Capture a screenshot (no argument = auto filename)",
+            "    la <package>      Launch an app (for example com.xingin.xhs)",
+            "",
+            "  Session",
+            "    raw                Toggle raw JSON output",
+            "    vars               Show session variables",
+            "    apps               List launcher apps",
+            "    set url <url>      Switch the server URL",
+            "    set timeout <N>    Set the default wait timeout (seconds)",
+            "",
+            "  Exit",
+            "    q                  Quit the REPL",
+            "    h                  Show this help",
+            "",
+            "  Shortcuts: l->list, ss->snapshot, t->tap, tx->tapx, xx->tapx-auto,",
+            "              i->input, ix->inputx, sw->swipe, p->press, b->back,",
+            "              wf->waitfor, g->get, s->screenshot, la->launch, vx->validatex,",
+            "              ref->ref, x->xpath, f->find, h->help, q->quit",
+            "",
+        ]
+        print('\n'.join(lines))
+
+    def _print_banner(self):
+        print()
+        print("  agent-android REPL v5.4  -  Android UI Automation REPL")
+        print(f"  Server: {self.client.base_url}")
+        print("  Type 'h' for help, 'q' to quit.")
+        print()
+
+    def _print_error(self, msg: str):
+        print(f"  [!] {msg}", file=sys.stderr)
