@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import shlex
 import sys
@@ -53,6 +54,7 @@ class AriaReplSession:
     COMMANDS = [
         ('l', 'list',          'List elements (reuse cache)'),
         ('ss', 'snapshot',     'Refresh the tree and list again'),
+        ('hl', 'health',       'Check service health'),
         ('f', 'find',          'Filter by text'),
         ('id', None,           'Filter by resourceId'),
         ('ref', None,          'Show element details'),
@@ -319,6 +321,23 @@ class AriaReplSession:
 
     def _cmd_ss(self, args: List[str]) -> bool:
         return self._cmd_snapshot(args)
+
+    def _cmd_health(self, args: List[str]) -> bool:
+        """health - fetch and print the /health payload."""
+        health = self.client.get_health()
+        if health is None:
+            self._print_error("Failed to fetch health.")
+            return False
+        if self._raw_output:
+            print(json.dumps(health, indent=2, ensure_ascii=False))
+            return True
+        print("Health:")
+        for key, value in health.items():
+            print(f"  {key}: {value}")
+        return True
+
+    def _cmd_hl(self, args: List[str]) -> bool:
+        return self._cmd_health(args)
 
     # -------------------------------------------------------------------------
     # -------------------------------------------------------------------------
@@ -818,6 +837,7 @@ class AriaReplSession:
             "  ─" + "─" * 66,
             "",
             "  Browse",
+            "    health            Check the /health endpoint",
             "    l [n]             List elements (show the first n entries, reuse cache)",
             "    ss                Refresh the tree and list again (force refresh)",
             "    f <text>          Filter elements by text",
@@ -863,7 +883,7 @@ class AriaReplSession:
             "",
             "  Shortcuts: l->list, ss->snapshot, t->tap, tx->tapx, xx->tapx-auto,",
             "              i->input, ix->inputx, sw->swipe, p->press, b->back,",
-            "              wf->waitfor, g->get, s->screenshot, la->launch, vx->validatex,",
+            "              wf->waitfor, g->get, s->screenshot, la->launch, hl->health, vx->validatex,",
             "              ref->ref, x->xpath, f->find, h->help, q->quit",
             "",
         ]

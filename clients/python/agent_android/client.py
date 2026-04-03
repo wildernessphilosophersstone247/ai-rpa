@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import re
 import sys
 import time
@@ -94,6 +95,11 @@ class AgentAndroidClient:
         if not isinstance(apps, list):
             return []
         return [entry for entry in apps if isinstance(entry, dict)]
+
+    def get_health(self) -> Optional[Dict[str, Any]]:
+        """Retrieve the service health payload from /health."""
+        result = self._get_raw("/health")
+        return result if isinstance(result, dict) else None
 
     def _download_binary(self, path: str, params: Dict = None) -> Optional[bytes]:
         """Download a binary payload from the Android runtime."""

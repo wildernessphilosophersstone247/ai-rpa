@@ -20,6 +20,7 @@ Usage:
     python agent-android.py --list            # Run a one-off command (compatibility mode)
 
 REPL quick reference:
+    health        Check the /health endpoint
     l [n]         List elements (first n entries, reuse cache)
     ss            Refresh the UI tree snapshot (force refresh)
     t <N>         Tap element with refId=N
@@ -67,6 +68,7 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument("--tap", type=int, metavar="REFID", help="Tap element by refId")
     group.add_argument("--input", nargs=2, metavar=("REFID", "TEXT"), help="Input text to element by refId")
     group.add_argument("--launch", "-a", type=str, metavar="PACKAGE", help="Launch app")
+    group.add_argument("--health", action="store_true", help="Check service health from /health")
     group.add_argument("--back", action="store_true", help="Press back button")
     group.add_argument("--apps", action="store_true", help="List launcher apps from /api/apps")
     group.add_argument("--press", type=str, metavar="KEY", help="Press key: back / home / menu / enter")
@@ -87,6 +89,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _run_direct_commands(args: argparse.Namespace, client: AgentAndroidClient) -> None:
+    if args.health:
+        health = client.get_health()
+        if health is None:
+            print("Failed to fetch health", file=sys.stderr)
+            raise SystemExit(1)
+        print(json.dumps(health, indent=2, ensure_ascii=False))
+        raise SystemExit(0)
     if args.back:
         raise SystemExit(0 if client.press_back() else 1)
     if args.press:

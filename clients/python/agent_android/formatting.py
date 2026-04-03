@@ -1,6 +1,13 @@
 from __future__ import annotations
 
+import sys
 from typing import Any, Dict, List, Optional, Tuple
+
+
+def _terminal_text(value: Any) -> str:
+    text = str(value)
+    encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+    return text.encode(encoding, errors="replace").decode(encoding, errors="replace")
 
 
 def _first_text(app: Dict[str, Any], keys: Tuple[str, ...], default: str = "") -> str:
@@ -25,7 +32,7 @@ def _format_launcher_app(app: Dict[str, Any]) -> str:
     if isinstance(enabled, bool):
         extras.append("enabled" if enabled else "disabled")
     extra_text = f" ({', '.join(extras)})" if extras else ""
-    return f"{label} - {package}{extra_text} [{activity}]"
+    return _terminal_text(f"{label} - {package}{extra_text} [{activity}]")
 
 
 def format_element(elem: Dict[str, Any]) -> str:
@@ -41,12 +48,12 @@ def format_element(elem: Dict[str, Any]) -> str:
     lines.append("| refId: {}".format(ref_id))
     lines.append("|" + "-" * 61 + "|")
     if text:
-        lines.append("| text: {}".format(text[:50]))
+        lines.append("| text: {}".format(_terminal_text(text[:50])))
     if desc:
-        lines.append("| contentDesc: {}".format(desc[:50]))
+        lines.append("| contentDesc: {}".format(_terminal_text(desc[:50])))
     if resource_id:
-        lines.append("| resourceId: {}".format(resource_id))
-    lines.append("| className: {}".format(cls))
+        lines.append("| resourceId: {}".format(_terminal_text(resource_id)))
+    lines.append("| className: {}".format(_terminal_text(cls)))
     lines.append("| position: ({}, {})".format(x, y))
 
     status = []
@@ -57,7 +64,7 @@ def format_element(elem: Dict[str, Any]) -> str:
     lines.append("| status: {}".format(", ".join(status) if status else "none"))
     lines.append("|")
     lines.append("| XPath:")
-    lines.append("|   {}".format(elem.get("xpath", "N/A")))
+    lines.append("|   {}".format(_terminal_text(elem.get("xpath", "N/A"))))
     lines.append("+" + "-" * 60 + "+")
     return "\n".join(lines)
 
@@ -84,7 +91,7 @@ def print_tree(
     print("=" * 70)
     print("  AIVane ARIA Tree - {} elements".format(len(elements)))
     if package_name:
-        print("  Current package: {}".format(package_name))
+        print("  Current package: {}".format(_terminal_text(package_name)))
     print("=" * 70)
 
     for elem in elements:
@@ -100,11 +107,13 @@ def print_tree(
             flags.append("focus")
         flag_str = "[{}]".format(",".join(flags)) if flags else ""
         display_text = text[:25] + "..." if len(str(text)) > 25 else str(text)
+        display_text = _terminal_text(display_text)
+        cls_display = _terminal_text(cls)
         print(
             "  [{:2d}] {:<28} {:<18} ({:4s},{:4s}) {}".format(
                 ref_id,
                 display_text,
-                cls,
+                cls_display,
                 str(x),
                 str(y),
                 flag_str,
